@@ -2,8 +2,7 @@ github.com/bufbuild/connect-go v0.3.0 h1:B0vyZrTR11SNEYpodL6P0NzluDCsuqmr8CNKblX
 github.com/bufbuild/connect-go v0.3.0/go.mod h1:4efZ2eXFENwd4p7tuLaL9m0qtTsCOzuBvrohvRGevDM=
 github.com/golang/protobuf v1.5.0/go.mod h1:FsONVRAS9T7sI+LIUmWTfcYkHO4aIWwzhcaSAoJOfIk=
 github.com/google/go-cmp v0.5.5/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
-github.com/lekkodev/core v0.0.0-20220805174059-7a0b5f909bf5 h1:hYkOcUuzxYPl6r0i1zXwCY42wwpf2j0vrqgktMLskA4=
-github.com/lekkodev/core v0.0.0-20220805174059-7a0b5f909bf5/go.mod h1:otHYToIyC1r3cV/CbBev6oUNhGEaXktt6Kzoia8thls=
+github.com/google/go-cmp v0.5.8 h1:e6P7q2lk1O+qJJb4BtCQXlK8vWEO8V1ZeuEdJNOqZyg=
 github.com/lekkodev/core v0.0.0-20220805234201-e7ed62af11d9 h1:rg1svGp6BEmatbGzTmukTGAn0xW527DPR8IeaSIMTHk=
 github.com/lekkodev/core v0.0.0-20220805234201-e7ed62af11d9/go.mod h1:otHYToIyC1r3cV/CbBev6oUNhGEaXktt6Kzoia8thls=
 golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
