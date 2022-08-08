@@ -16,12 +16,20 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 
 	client "github.com/lekkodev/go-sdk/client"
 )
 
 func main() {
-	cl := client.NewClient("org1", "namespace1")
-	log.Printf("Retrieving feature flag: %v\n", cl.GetBool(context.TODO(), "test", false))
+	key := flag.String("lekko-apikey", "", "API key for lekko given to your organization")
+	flag.Parse()
+
+	if key == nil {
+		log.Fatal("Lekko API key not provided. Exiting...")
+	}
+
+	cl := client.NewClient(*key, "namespace-one")
+	log.Printf("Retrieving feature flag: %v\n", cl.GetBool(context.TODO(), "basic_feature_on", false))
 }

@@ -1,5 +1,5 @@
 MAKEGO := make/go
-MAKEGO_REMOTE := https://github.com/lekkodev/makego.git
+MAKEGO_REMOTE := git@github.com:lekkodev/makego.git
 PROJECT := go-sdk
 GO_MODULE := github.com/lekkodev/go-sdk
 DOCKER_ORG := lekko

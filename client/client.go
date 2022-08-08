@@ -25,26 +25,33 @@ import (
 	"github.com/bufbuild/connect-go"
 )
 
+const (
+	LekkoURL          = "https://grpc.lekko.dev:443"
+	LekkoAPIKeyHeader = "apikey"
+)
+
 type Client struct {
-	orgName, namespace string
-	lekkoClient        backendv1beta1connect.ConfigurationServiceClient
+	apikey, namespace string
+	lekkoClient       backendv1beta1connect.ConfigurationServiceClient
 }
 
-func NewClient(orgName, namespace string) *Client {
+func NewClient(apikey, namespace string) *Client {
 	return &Client{
-		orgName:     orgName,
+		apikey:      apikey,
 		namespace:   namespace,
-		lekkoClient: backendv1beta1connect.NewConfigurationServiceClient(http.DefaultClient, "http://localhost:8080/"),
+		lekkoClient: backendv1beta1connect.NewConfigurationServiceClient(http.DefaultClient, LekkoURL),
 	}
 }
 
 func (c *Client) GetBool(ctx context.Context, key string, defaultValue bool) bool {
-	resp, err := c.lekkoClient.GetBoolValue(ctx, connect.NewRequest(&backendv1beta1.GetBoolValueRequest{
+	req := connect.NewRequest(&backendv1beta1.GetBoolValueRequest{
 		Key:       key,
 		Namespace: c.namespace,
-	}))
+	})
+	req.Header().Set(LekkoAPIKeyHeader, c.apikey)
+	resp, err := c.lekkoClient.GetBoolValue(ctx, req)
 	if err != nil {
-		log.Printf("error hitting lekko backend: %v\n", err)
+		log.Printf("error hitting lekko backend: resp: %v, err: %v\n", resp, err)
 		return defaultValue
 	}
 	return resp.Msg.GetValue()
