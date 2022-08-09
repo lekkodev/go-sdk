@@ -15,7 +15,7 @@ jobs:
       - name: Configure git for private modules
         env:
           TOKEN: ${{ secrets.CI_PERSONAL_ACCESS_TOKEN }}
-        run: git config --global url."https://lekkoci:${TOKEN}@github.com".insteadOf "https:github.com"; cat ~/.gitconfig; cat $HOME/.gitconfig
+        run: git config --global --add url."https://lekkoci:${TOKEN}@github.com".insteadOf "https://github.com"; cat ~/.gitconfig; cat $HOME/.gitconfig
       - name: setup-go
         if: success()
         uses: actions/setup-go@v2
