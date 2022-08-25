@@ -19,8 +19,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/lekkodev/core/pkg/gen/proto/go-connect/lekko/backend/v1beta1/backendv1beta1connect"
-	backendv1beta1 "github.com/lekkodev/core/pkg/gen/proto/go/lekko/backend/v1beta1"
+	"github.com/lekkodev/cli/pkg/gen/proto/go-connect/lekko/backend/v1beta1/backendv1beta1connect"
+	backendv1beta1 "github.com/lekkodev/cli/pkg/gen/proto/go/lekko/backend/v1beta1"
 
 	"github.com/bufbuild/connect-go"
 )
@@ -44,9 +44,15 @@ func NewClient(apikey, namespace string) *Client {
 }
 
 func (c *Client) GetBool(ctx context.Context, key string, defaultValue bool) bool {
+	lc, err := toProto(fromContext(ctx))
+	if err != nil {
+		log.Printf("error transforming context: %v", err)
+		return defaultValue
+	}
 	req := connect.NewRequest(&backendv1beta1.GetBoolValueRequest{
 		Key:       key,
 		Namespace: c.namespace,
+		Context:   lc,
 	})
 	req.Header().Set(LekkoAPIKeyHeader, c.apikey)
 	resp, err := c.lekkoClient.GetBoolValue(ctx, req)
