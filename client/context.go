@@ -34,6 +34,7 @@ var lekkoKeyV1 lekkoKey
 
 // Context allows you to pass arbitraty context variables in order to perform
 // rules evaluation on your feature flags in real time.
+// TODO: this is not thread-safe, make it thread-safe.
 func Context(ctx context.Context, lekkoCtx map[string]interface{}) context.Context {
 	ls := lekkoContext(lekkoCtx)
 	existing := fromContext(ctx)
