@@ -21,6 +21,9 @@ import (
 	backendv1beta1 "github.com/lekkodev/cli/pkg/gen/proto/go/lekko/backend/v1beta1"
 )
 
+// TODO: we need a better name that's not 'context'. Conditions? Features? Values?
+// 'context' is overloaded in go.
+
 // lekkoContext is the type of the value stored in the context
 type lekkoContext map[string]interface{}
 
@@ -32,22 +35,31 @@ type lekkoKey int
 // context that users of the golang sdk can pass in to lekko via context.Context.
 var lekkoKeyV1 lekkoKey
 
-// Context allows you to pass arbitraty context variables in order to perform
+// Merge allows you to pass arbitraty context variables in order to perform
 // rules evaluation on your feature flags in real time.
 // TODO: this is not thread-safe, make it thread-safe.
-func Context(ctx context.Context, lekkoCtx map[string]interface{}) context.Context {
+func Merge(ctx context.Context, lekkoCtx map[string]interface{}) context.Context {
 	ls := lekkoContext(lekkoCtx)
 	existing := fromContext(ctx)
 	for k, v := range existing {
-		ls[k] = v
+		// copy over existing context keys if they don't appear in the given context.
+		if _, ok := ls[k]; !ok {
+			ls[k] = v
+		}
 	}
 	return context.WithValue(ctx, lekkoKeyV1, ls)
+}
+
+func Add(ctx context.Context, key string, value interface{}) context.Context {
+	return Merge(ctx, map[string]interface{}{
+		key: value,
+	})
 }
 
 func fromContext(ctx context.Context) map[string]interface{} {
 	lekkoCtx, ok := ctx.Value(lekkoKeyV1).(lekkoContext)
 	if !ok {
-		return lekkoContext{}
+		return make(map[string]interface{})
 	}
 	return lekkoCtx
 }
@@ -55,7 +67,7 @@ func fromContext(ctx context.Context) map[string]interface{} {
 func toProto(lc lekkoContext) (map[string]*backendv1beta1.Value, error) {
 	ret := make(map[string]*backendv1beta1.Value)
 	for k, v := range lc {
-		var protoValue *backendv1beta1.Value
+		protoValue := &backendv1beta1.Value{}
 		switch tv := v.(type) {
 		case bool:
 			protoValue.Kind = &backendv1beta1.Value_BoolValue{BoolValue: tv}
