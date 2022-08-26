@@ -21,6 +21,7 @@ import (
 
 	"github.com/lekkodev/cli/pkg/gen/proto/go-connect/lekko/backend/v1beta1/backendv1beta1connect"
 	backendv1beta1 "github.com/lekkodev/cli/pkg/gen/proto/go/lekko/backend/v1beta1"
+	"google.golang.org/protobuf/types/known/anypb"
 
 	"github.com/bufbuild/connect-go"
 )
@@ -56,6 +57,26 @@ func (c *Client) GetBool(ctx context.Context, key string, defaultValue bool) boo
 	})
 	req.Header().Set(LekkoAPIKeyHeader, c.apikey)
 	resp, err := c.lekkoClient.GetBoolValue(ctx, req)
+	if err != nil {
+		log.Printf("error hitting lekko backend: resp: %v, err: %v\n", resp, err)
+		return defaultValue
+	}
+	return resp.Msg.GetValue()
+}
+
+func (c *Client) GetProto(ctx context.Context, key string, defaultValue *anypb.Any) *anypb.Any {
+	lc, err := toProto(fromContext(ctx))
+	if err != nil {
+		log.Printf("error transforming context: %v", err)
+		return defaultValue
+	}
+	req := connect.NewRequest(&backendv1beta1.GetProtoValueRequest{
+		Key:       key,
+		Namespace: c.namespace,
+		Context:   lc,
+	})
+	req.Header().Set(LekkoAPIKeyHeader, c.apikey)
+	resp, err := c.lekkoClient.GetProtoValue(ctx, req)
 	if err != nil {
 		log.Printf("error hitting lekko backend: resp: %v, err: %v\n", resp, err)
 		return defaultValue

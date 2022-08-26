@@ -16,5 +16,5 @@ require (
 
 require (
 	github.com/stretchr/testify v1.8.0
-	google.golang.org/protobuf v1.28.0 // indirect
+	google.golang.org/protobuf v1.28.0
 )
