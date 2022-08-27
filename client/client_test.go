@@ -81,6 +81,11 @@ func TestGetProtoValue(t *testing.T) {
 	// test passing up backend error
 	cli = testClient(&testBackendClient{protoVal: wrapperspb.Int64(59), protoErr: errors.New("error")})
 	assert.Error(t, cli.GetProto(ctx, "test_key", result))
+
+	// type mismatch in proto value
+	cli = testClient(&testBackendClient{protoVal: wrapperspb.Int64(59)})
+	badResult := &wrapperspb.BoolValue{}
+	assert.Error(t, cli.GetProto(ctx, "test_key", badResult))
 }
 
 func TestUnsupportedContextType(t *testing.T) {
