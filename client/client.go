@@ -21,7 +21,8 @@ import (
 
 	"github.com/lekkodev/cli/pkg/gen/proto/go-connect/lekko/backend/v1beta1/backendv1beta1connect"
 	backendv1beta1 "github.com/lekkodev/cli/pkg/gen/proto/go/lekko/backend/v1beta1"
-	"google.golang.org/protobuf/types/known/anypb"
+	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/bufbuild/connect-go"
 )
@@ -44,11 +45,11 @@ func NewClient(apikey, namespace string) *Client {
 	}
 }
 
-func (c *Client) GetBool(ctx context.Context, key string, defaultValue bool) bool {
+func (c *Client) GetBool(ctx context.Context, key string) (bool, error) {
 	lc, err := toProto(fromContext(ctx))
 	if err != nil {
 		log.Printf("error transforming context: %v", err)
-		return defaultValue
+		return false, errors.Wrap(err, "error transforming context")
 	}
 	req := connect.NewRequest(&backendv1beta1.GetBoolValueRequest{
 		Key:       key,
@@ -59,16 +60,16 @@ func (c *Client) GetBool(ctx context.Context, key string, defaultValue bool) boo
 	resp, err := c.lekkoClient.GetBoolValue(ctx, req)
 	if err != nil {
 		log.Printf("error hitting lekko backend: resp: %v, err: %v\n", resp, err)
-		return defaultValue
+		return false, errors.Wrap(err, "error hitting lekko backend")
 	}
-	return resp.Msg.GetValue()
+	return resp.Msg.GetValue(), nil
 }
 
-func (c *Client) GetProto(ctx context.Context, key string, defaultValue *anypb.Any) *anypb.Any {
+func (c *Client) GetProto(ctx context.Context, key string, result proto.Message) error {
 	lc, err := toProto(fromContext(ctx))
 	if err != nil {
 		log.Printf("error transforming context: %v", err)
-		return defaultValue
+		return errors.Wrap(err, "error transforming context")
 	}
 	req := connect.NewRequest(&backendv1beta1.GetProtoValueRequest{
 		Key:       key,
@@ -79,7 +80,7 @@ func (c *Client) GetProto(ctx context.Context, key string, defaultValue *anypb.A
 	resp, err := c.lekkoClient.GetProtoValue(ctx, req)
 	if err != nil {
 		log.Printf("error hitting lekko backend: resp: %v, err: %v\n", resp, err)
-		return defaultValue
+		return errors.Wrap(err, "error hitting lekko backend")
 	}
-	return resp.Msg.GetValue()
+	return resp.Msg.GetValue().UnmarshalTo(result)
 }

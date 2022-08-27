@@ -31,5 +31,6 @@ func main() {
 	}
 
 	cl := client.NewClient(*key, "namespace-one")
-	log.Printf("Retrieving feature flag: %v\n", cl.GetBool(context.TODO(), "basic_feature_on", false))
+	flag, err := cl.GetBool(context.TODO(), "basic_feature_on")
+	log.Printf("Retrieving feature flag: %v (err=%v)\n", flag, err)
 }
