@@ -16,6 +16,7 @@ package client
 
 import (
 	context "context"
+	"encoding/json"
 	"testing"
 
 	"github.com/bufbuild/connect-go"
@@ -29,9 +30,10 @@ import (
 )
 
 type testBackendClient struct {
-	boolVal           bool
-	protoVal          proto.Message
-	boolErr, protoErr error
+	boolVal                    bool
+	protoVal                   proto.Message
+	jsonVal                    []byte
+	boolErr, protoErr, jsonErr error
 }
 
 func (tbc *testBackendClient) GetBoolValue(ctx context.Context, req *connect.Request[v1beta1.GetBoolValueRequest]) (*connect.Response[v1beta1.GetBoolValueResponse], error) {
@@ -48,6 +50,12 @@ func (tbc *testBackendClient) GetProtoValue(context.Context, *connect.Request[v1
 	return connect.NewResponse(&v1beta1.GetProtoValueResponse{
 		Value: anyVal,
 	}), tbc.protoErr
+}
+
+func (tbc *testBackendClient) GetJSONValue(context.Context, *connect.Request[v1beta1.GetJSONValueRequest]) (*connect.Response[v1beta1.GetJSONValueResponse], error) {
+	return connect.NewResponse(&v1beta1.GetJSONValueResponse{
+		Value: tbc.jsonVal,
+	}), tbc.jsonErr
 }
 
 func testClient(backendCli *testBackendClient) *Client {
@@ -93,4 +101,45 @@ func TestUnsupportedContextType(t *testing.T) {
 	cli := testClient(&testBackendClient{boolVal: true})
 	_, err := cli.GetBool(ctx, "test_key")
 	require.Error(t, err)
+}
+
+type barType struct {
+	Baz int `json:"baz"`
+}
+
+type testStruct struct {
+	Foo int      `json:"foo"`
+	Bar *barType `json:"bar"`
+}
+
+func TestGetJSONValue(t *testing.T) {
+	// success
+	ctx := context.Background()
+	ts := &testStruct{Foo: 1, Bar: &barType{Baz: 12}}
+	bytes, err := json.Marshal(ts)
+	require.NoError(t, err)
+	cli := testClient(&testBackendClient{jsonVal: bytes})
+	result := &testStruct{}
+	require.NoError(t, cli.GetJSON(ctx, "test_key", result))
+	assert.EqualValues(t, ts, result)
+
+	// test passing up backend error
+	cli = testClient(&testBackendClient{jsonVal: bytes, jsonErr: errors.New("error")})
+	assert.Error(t, cli.GetJSON(ctx, "test_key", result))
+
+	// type mismatch in result
+	cli = testClient(&testBackendClient{jsonVal: bytes})
+	badResult := new(int)
+	assert.Error(t, cli.GetJSON(ctx, "test_key", badResult))
+}
+
+func TestGetJSONArrValue(t *testing.T) {
+	ctx := context.Background()
+	ts := []int{1, 2, 3}
+	bytes, err := json.Marshal(&ts)
+	require.NoError(t, err)
+	cli := testClient(&testBackendClient{jsonVal: bytes})
+	result := new([]int)
+	require.NoError(t, cli.GetJSON(ctx, "test_key", result))
+	assert.EqualValues(t, &ts, result)
 }
