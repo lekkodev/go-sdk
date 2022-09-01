@@ -16,6 +16,8 @@ package client
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -83,4 +85,27 @@ func (c *Client) GetProto(ctx context.Context, key string, result proto.Message)
 		return errors.Wrap(err, "error hitting lekko backend")
 	}
 	return resp.Msg.GetValue().UnmarshalTo(result)
+}
+
+func (c *Client) GetJSON(ctx context.Context, key string, result interface{}) error {
+	lc, err := toProto(fromContext(ctx))
+	if err != nil {
+		log.Printf("error transforming context: %v", err)
+		return errors.Wrap(err, "error transforming context")
+	}
+	req := connect.NewRequest(&backendv1beta1.GetJSONValueRequest{
+		Key:       key,
+		Namespace: c.namespace,
+		Context:   lc,
+	})
+	req.Header().Set(LekkoAPIKeyHeader, c.apikey)
+	resp, err := c.lekkoClient.GetJSONValue(ctx, req)
+	if err != nil {
+		log.Printf("error hitting lekko backend: resp: %v, err: %v\n", resp, err)
+		return errors.Wrap(err, "error hitting lekko backend")
+	}
+	if err := json.Unmarshal(resp.Msg.GetValue(), result); err != nil {
+		return errors.Wrap(err, fmt.Sprintf("failed to unmarshal json into go type %T", result))
+	}
+	return nil
 }
