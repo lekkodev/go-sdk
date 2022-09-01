@@ -58,48 +58,48 @@ func (tbc *testBackendClient) GetJSONValue(context.Context, *connect.Request[v1b
 	}), tbc.jsonErr
 }
 
-func testClient(backendCli *testBackendClient) *Client {
-	return &Client{
+func testProvider(backendCli *testBackendClient) Provider {
+	return &apiProvider{
 		lekkoClient: backendCli,
 	}
 }
 
-func TestGetBoolValue(t *testing.T) {
+func TestGetBoolFeature(t *testing.T) {
 	// success
 	ctx := context.Background()
-	cli := testClient(&testBackendClient{boolVal: true})
-	result, err := cli.GetBool(ctx, "test_key")
+	cli := testProvider(&testBackendClient{boolVal: true})
+	result, err := cli.GetBoolFeature(ctx, "test_key", "namespace")
 	assert.NoError(t, err)
 	assert.True(t, result)
 
 	// test passing up backend error
-	cli = testClient(&testBackendClient{boolErr: errors.New("error")})
-	_, err = cli.GetBool(ctx, "test_key")
+	cli = testProvider(&testBackendClient{boolErr: errors.New("error")})
+	_, err = cli.GetBoolFeature(ctx, "test_key", "namespace")
 	assert.Error(t, err)
 }
 
-func TestGetProtoValue(t *testing.T) {
+func TestGetProtoFeature(t *testing.T) {
 	// success
 	ctx := context.Background()
-	cli := testClient(&testBackendClient{protoVal: wrapperspb.Int64(59)})
+	cli := testProvider(&testBackendClient{protoVal: wrapperspb.Int64(59)})
 	result := &wrapperspb.Int64Value{}
-	require.NoError(t, cli.GetProto(ctx, "test_key", result))
+	require.NoError(t, cli.GetProtoFeature(ctx, "test_key", "namespace", result))
 	assert.EqualValues(t, int64(59), result.Value)
 
 	// test passing up backend error
-	cli = testClient(&testBackendClient{protoVal: wrapperspb.Int64(59), protoErr: errors.New("error")})
-	assert.Error(t, cli.GetProto(ctx, "test_key", result))
+	cli = testProvider(&testBackendClient{protoVal: wrapperspb.Int64(59), protoErr: errors.New("error")})
+	assert.Error(t, cli.GetProtoFeature(ctx, "test_key", "namespace", result))
 
 	// type mismatch in proto value
-	cli = testClient(&testBackendClient{protoVal: wrapperspb.Int64(59)})
+	cli = testProvider(&testBackendClient{protoVal: wrapperspb.Int64(59)})
 	badResult := &wrapperspb.BoolValue{}
-	assert.Error(t, cli.GetProto(ctx, "test_key", badResult))
+	assert.Error(t, cli.GetProtoFeature(ctx, "test_key", "namespace", badResult))
 }
 
 func TestUnsupportedContextType(t *testing.T) {
 	ctx := Add(context.Background(), "foo", []string{})
-	cli := testClient(&testBackendClient{boolVal: true})
-	_, err := cli.GetBool(ctx, "test_key")
+	cli := testProvider(&testBackendClient{boolVal: true})
+	_, err := cli.GetBoolFeature(ctx, "test_key", "namespace")
 	require.Error(t, err)
 }
 
@@ -112,34 +112,34 @@ type testStruct struct {
 	Bar *barType `json:"bar"`
 }
 
-func TestGetJSONValue(t *testing.T) {
+func TestGetJSONFeature(t *testing.T) {
 	// success
 	ctx := context.Background()
 	ts := &testStruct{Foo: 1, Bar: &barType{Baz: 12}}
 	bytes, err := json.Marshal(ts)
 	require.NoError(t, err)
-	cli := testClient(&testBackendClient{jsonVal: bytes})
+	cli := testProvider(&testBackendClient{jsonVal: bytes})
 	result := &testStruct{}
-	require.NoError(t, cli.GetJSON(ctx, "test_key", result))
+	require.NoError(t, cli.GetJSONFeature(ctx, "test_key", "namespace", result))
 	assert.EqualValues(t, ts, result)
 
 	// test passing up backend error
-	cli = testClient(&testBackendClient{jsonVal: bytes, jsonErr: errors.New("error")})
-	assert.Error(t, cli.GetJSON(ctx, "test_key", result))
+	cli = testProvider(&testBackendClient{jsonVal: bytes, jsonErr: errors.New("error")})
+	assert.Error(t, cli.GetJSONFeature(ctx, "test_key", "namespace", result))
 
 	// type mismatch in result
-	cli = testClient(&testBackendClient{jsonVal: bytes})
+	cli = testProvider(&testBackendClient{jsonVal: bytes})
 	badResult := new(int)
-	assert.Error(t, cli.GetJSON(ctx, "test_key", badResult))
+	assert.Error(t, cli.GetJSONFeature(ctx, "test_key", "namespace", badResult))
 }
 
-func TestGetJSONArrValue(t *testing.T) {
+func TestGetJSONFeatureArr(t *testing.T) {
 	ctx := context.Background()
 	ts := []int{1, 2, 3}
 	bytes, err := json.Marshal(&ts)
 	require.NoError(t, err)
-	cli := testClient(&testBackendClient{jsonVal: bytes})
+	cli := testProvider(&testBackendClient{jsonVal: bytes})
 	result := new([]int)
-	require.NoError(t, cli.GetJSON(ctx, "test_key", result))
+	require.NoError(t, cli.GetJSONFeature(ctx, "test_key", "namespace", result))
 	assert.EqualValues(t, &ts, result)
 }
