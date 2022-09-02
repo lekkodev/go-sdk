@@ -16,96 +16,27 @@ package client
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"log"
-	"net/http"
 
-	"github.com/lekkodev/cli/pkg/gen/proto/go-connect/lekko/backend/v1beta1/backendv1beta1connect"
-	backendv1beta1 "github.com/lekkodev/cli/pkg/gen/proto/go/lekko/backend/v1beta1"
-	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
-
-	"github.com/bufbuild/connect-go"
-)
-
-const (
-	LekkoURL          = "https://grpc.lekko.dev:443"
-	LekkoAPIKeyHeader = "apikey"
 )
 
 type Client struct {
-	apikey, namespace string
-	lekkoClient       backendv1beta1connect.ConfigurationServiceClient
+	namespace string
+	provider  Provider
 }
 
-func NewClient(apikey, namespace string) *Client {
-	return &Client{
-		apikey:      apikey,
-		namespace:   namespace,
-		lekkoClient: backendv1beta1connect.NewConfigurationServiceClient(http.DefaultClient, LekkoURL),
-	}
+func NewClient(namespace string, provider Provider) *Client {
+	return &Client{namespace, provider}
 }
 
 func (c *Client) GetBool(ctx context.Context, key string) (bool, error) {
-	lc, err := toProto(fromContext(ctx))
-	if err != nil {
-		log.Printf("error transforming context: %v", err)
-		return false, errors.Wrap(err, "error transforming context")
-	}
-	req := connect.NewRequest(&backendv1beta1.GetBoolValueRequest{
-		Key:       key,
-		Namespace: c.namespace,
-		Context:   lc,
-	})
-	req.Header().Set(LekkoAPIKeyHeader, c.apikey)
-	resp, err := c.lekkoClient.GetBoolValue(ctx, req)
-	if err != nil {
-		log.Printf("error hitting lekko backend: resp: %v, err: %v\n", resp, err)
-		return false, errors.Wrap(err, "error hitting lekko backend")
-	}
-	return resp.Msg.GetValue(), nil
+	return c.provider.GetBoolFeature(ctx, key, c.namespace)
 }
 
 func (c *Client) GetProto(ctx context.Context, key string, result proto.Message) error {
-	lc, err := toProto(fromContext(ctx))
-	if err != nil {
-		log.Printf("error transforming context: %v", err)
-		return errors.Wrap(err, "error transforming context")
-	}
-	req := connect.NewRequest(&backendv1beta1.GetProtoValueRequest{
-		Key:       key,
-		Namespace: c.namespace,
-		Context:   lc,
-	})
-	req.Header().Set(LekkoAPIKeyHeader, c.apikey)
-	resp, err := c.lekkoClient.GetProtoValue(ctx, req)
-	if err != nil {
-		log.Printf("error hitting lekko backend: resp: %v, err: %v\n", resp, err)
-		return errors.Wrap(err, "error hitting lekko backend")
-	}
-	return resp.Msg.GetValue().UnmarshalTo(result)
+	return c.provider.GetProtoFeature(ctx, key, c.namespace, result)
 }
 
 func (c *Client) GetJSON(ctx context.Context, key string, result interface{}) error {
-	lc, err := toProto(fromContext(ctx))
-	if err != nil {
-		log.Printf("error transforming context: %v", err)
-		return errors.Wrap(err, "error transforming context")
-	}
-	req := connect.NewRequest(&backendv1beta1.GetJSONValueRequest{
-		Key:       key,
-		Namespace: c.namespace,
-		Context:   lc,
-	})
-	req.Header().Set(LekkoAPIKeyHeader, c.apikey)
-	resp, err := c.lekkoClient.GetJSONValue(ctx, req)
-	if err != nil {
-		log.Printf("error hitting lekko backend: resp: %v, err: %v\n", resp, err)
-		return errors.Wrap(err, "error hitting lekko backend")
-	}
-	if err := json.Unmarshal(resp.Msg.GetValue(), result); err != nil {
-		return errors.Wrap(err, fmt.Sprintf("failed to unmarshal json into go type %T", result))
-	}
-	return nil
+	return c.provider.GetJSONFeature(ctx, key, c.namespace, result)
 }

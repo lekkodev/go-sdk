@@ -12,25 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package client
 
 import (
 	"context"
-	"flag"
-	"log"
 
-	client "github.com/lekkodev/go-sdk/client"
+	"google.golang.org/protobuf/proto"
 )
 
-func main() {
-	key := flag.String("lekko-apikey", "", "API key for lekko given to your organization")
-	flag.Parse()
-
-	if key == nil {
-		log.Fatal("Lekko API key not provided. Exiting...")
-	}
-
-	cl := client.NewClient("namespace-one", client.NewAPIProvider(*key))
-	flag, err := cl.GetBool(context.TODO(), "basic_feature_on")
-	log.Printf("Retrieving feature flag: %v (err=%v)\n", flag, err)
+// A provider evaluates configuration from a number of sources.
+type Provider interface {
+	GetBoolFeature(ctx context.Context, key string, namespace string) (bool, error)
+	GetStringFeature(ctx context.Context, key string, namespace string) (string, error)
+	GetProtoFeature(ctx context.Context, key string, namespace string, result proto.Message) error
+	GetJSONFeature(ctx context.Context, key string, namespace string, result interface{}) error
 }
