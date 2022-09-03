@@ -16,46 +16,25 @@ package client
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"path/filepath"
 
 	"github.com/lekkodev/cli/pkg/encoding"
 	"github.com/lekkodev/cli/pkg/feature"
 	"github.com/lekkodev/cli/pkg/fs"
 	"github.com/lekkodev/cli/pkg/metadata"
-	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
-func NewKubeProvider(kubeNamespace string, inCluster bool) (Provider, error) {
-	var (
-		config *rest.Config
-		err    error
-	)
-	if inCluster {
-		config, err = rest.InClusterConfig()
-		if err != nil {
-			return nil, errors.Wrap(err, "in cluster config")
-		}
-	} else {
-		var kubeConfigPath string
-		home, err := homedir.Dir()
-		if err == nil {
-			kubeConfigPath = filepath.Join(home, ".kube", "config")
-		}
-		config, err = clientcmd.BuildConfigFromFlags("", kubeConfigPath)
-		if err != nil {
-			return nil, errors.Wrap(err, "build cfg from flags")
-		}
+func NewKubeProvider(kubeNamespace string) (Provider, error) {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, err
 	}
 	// creates the clientset
 	clientset, err := kubernetes.NewForConfig(config)
@@ -80,7 +59,7 @@ func (k *kubeProvider) GetEvaluableFeature(ctx context.Context, key string, name
 
 	fBytes, ok := cm.BinaryData[key]
 	if !ok {
-		return nil, fmt.Errorf("could not find key: %s in namespace %s via k8s configmap", key, namespace)
+		return nil, fmt.Errorf(fmt.Sprintf("could not find key: %s in namespace %s via k8s configmap", key, namespace))
 	}
 	// This is quite gross, we need to think of a better abstraction here... maybe a `ParseFeatureRaw` method
 	// in encoding? Needs a bit more thought.
@@ -128,29 +107,8 @@ func (k *kubeProvider) GetProtoFeature(ctx context.Context, key string, namespac
 	return nil
 }
 func (k *kubeProvider) GetJSONFeature(ctx context.Context, key string, namespace string, result interface{}) error {
-	evalF, err := k.GetEvaluableFeature(ctx, key, namespace)
-	if err != nil {
-		return err
-	}
-	resp, err := evalF.Evaluate(fromContext(ctx))
-	if err != nil {
-		return err
-	}
-	val := &structpb.Value{}
-	if !resp.MessageIs(val) {
-		return fmt.Errorf("invalid type in config map %T", resp)
-	}
-	if err := resp.UnmarshalTo(val); err != nil {
-		return fmt.Errorf("failed to unmarshal any to value: %w", err)
-	}
-	bytes, err := val.MarshalJSON()
-	if err != nil {
-		return fmt.Errorf("failed to marshal value into bytes: %w", err)
-	}
-	if err := json.Unmarshal(bytes, result); err != nil {
-		return errors.Wrap(err, fmt.Sprintf("failed to unmarshal json into go type %T", result))
-	}
-	return nil
+	// TODO: into google.protobuf.Value and then decode that to an interface.
+	return fmt.Errorf("unimplemented")
 }
 
 type kubeFileProvider struct {
