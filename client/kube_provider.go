@@ -16,6 +16,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/lekkodev/cli/pkg/encoding"
@@ -24,6 +25,7 @@ import (
 	"github.com/lekkodev/cli/pkg/metadata"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -107,8 +109,29 @@ func (k *kubeProvider) GetProtoFeature(ctx context.Context, key string, namespac
 	return nil
 }
 func (k *kubeProvider) GetJSONFeature(ctx context.Context, key string, namespace string, result interface{}) error {
-	// TODO: into google.protobuf.Value and then decode that to an interface.
-	return fmt.Errorf("unimplemented")
+	evalF, err := k.GetEvaluableFeature(ctx, key, namespace)
+	if err != nil {
+		return err
+	}
+	resp, err := evalF.Evaluate(fromContext(ctx))
+	if err != nil {
+		return err
+	}
+	val := &structpb.Value{}
+	if !resp.MessageIs(val) {
+		return fmt.Errorf("invalid type in config map %T", resp)
+	}
+	if err := resp.UnmarshalTo(val); err != nil {
+		return fmt.Errorf("failed to unmarshal any to value: %w", err)
+	}
+	bytes, err := val.MarshalJSON()
+	if err != nil {
+		return fmt.Errorf("failed to marshal value into bytes: %w", err)
+	}
+	if err := json.Unmarshal(bytes, result); err != nil {
+		return errors.Wrap(err, fmt.Sprintf("failed to unmarshal json into go type %T", result))
+	}
+	return nil
 }
 
 type kubeFileProvider struct {
