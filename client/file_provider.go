@@ -93,7 +93,7 @@ func (f *fileProvider) GetBoolFeature(ctx context.Context, key string, namespace
 	}
 	boolVal := new(wrapperspb.BoolValue)
 	if !resp.MessageIs(boolVal) {
-		return false, fmt.Errorf("invalid type in config map %T", resp)
+		return false, fmt.Errorf("invalid type in config %T", resp)
 	}
 	if err := resp.UnmarshalTo(boolVal); err != nil {
 		return false, err

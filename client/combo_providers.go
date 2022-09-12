@@ -19,6 +19,11 @@ import (
 	"os"
 )
 
+// TODO: There should be a clear story of how to chain together
+// providers, as well as passing out information on the flow of
+// the decisions used to fallback, for tracability purposes. Right
+// now we log, but we should return reasons instead.
+
 // Use this to chain a file fallback to a production lekko provider.
 // If an error is passed in, this will attempt to read the LEKKO_BOOTSTRAP
 // environment variable and initialize a file provider from there.
