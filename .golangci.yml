@@ -5,10 +5,10 @@ linters-settings:
     check-type-assertions: true
   forbidigo:
     forbid:
+      - '^log\.'
+      - '^print$'
+      - '^println$'
       # - '^fmt\.Print'
-      # - '^log\.'
-      # - '^print$'
-      # - '^println$'
 linters:
   enable:
     - asciicheck

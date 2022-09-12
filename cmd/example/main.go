@@ -27,10 +27,10 @@ func main() {
 	flag.Parse()
 
 	if key == nil {
-		log.Fatal("Lekko API key not provided. Exiting...")
+		log.Fatal("Lekko API key not provided. Exiting...") // nolint
 	}
 
 	cl := client.NewClient("namespace-one", client.NewAPIProvider(*key))
 	flag, err := cl.GetBool(context.TODO(), "basic_feature_on")
-	log.Printf("Retrieving feature flag: %v (err=%v)\n", flag, err)
+	log.Printf("Retrieving feature flag: %v (err=%v)\n", flag, err) // nolint
 }
