@@ -21,22 +21,45 @@ import (
 )
 
 type Client struct {
-	namespace string
-	provider  Provider
+	namespace   string
+	provider    Provider
+	environment *string
 }
 
 func NewClient(namespace string, provider Provider) *Client {
-	return &Client{namespace, provider}
+	return &Client{namespace, provider, nil}
+}
+
+const lekkoEnvironmentContextKey = "lekko_env"
+
+type ClientOptions struct {
+	// Lekko namespace to read configurations from
+	Namespace string
+	// Runtime environment used for rules evaluation. Can be any
+	// freeform string, but most common values are 'dev', 'staging',
+	// 'prod', etc.
+	Environment string
+}
+
+func (o ClientOptions) NewClient(provider Provider) *Client {
+	return &Client{o.Namespace, provider, &o.Environment}
 }
 
 func (c *Client) GetBool(ctx context.Context, key string) (bool, error) {
-	return c.provider.GetBoolFeature(ctx, key, c.namespace)
+	return c.provider.GetBoolFeature(c.wrap(ctx), key, c.namespace)
 }
 
 func (c *Client) GetProto(ctx context.Context, key string, result proto.Message) error {
-	return c.provider.GetProtoFeature(ctx, key, c.namespace, result)
+	return c.provider.GetProtoFeature(c.wrap(ctx), key, c.namespace, result)
 }
 
 func (c *Client) GetJSON(ctx context.Context, key string, result interface{}) error {
-	return c.provider.GetJSONFeature(ctx, key, c.namespace, result)
+	return c.provider.GetJSONFeature(c.wrap(ctx), key, c.namespace, result)
+}
+
+func (c *Client) wrap(ctx context.Context) context.Context {
+	if c.environment == nil {
+		return ctx
+	}
+	return Add(ctx, lekkoEnvironmentContextKey, *c.environment)
 }
