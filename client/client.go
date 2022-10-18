@@ -21,28 +21,26 @@ import (
 )
 
 type Client struct {
-	namespace   string
-	provider    Provider
-	environment *string
+	namespace      string
+	provider       Provider
+	startupContext map[string]interface{}
 }
 
 func NewClient(namespace string, provider Provider) *Client {
 	return &Client{namespace, provider, nil}
 }
 
-const lekkoEnvironmentContextKey = "lekko_env"
-
 type ClientOptions struct {
 	// Lekko namespace to read configurations from
 	Namespace string
-	// Runtime environment used for rules evaluation. Can be any
-	// freeform string, but most common values are 'dev', 'staging',
-	// 'prod', etc.
-	Environment string
+	// Arbitrary keys and values for rules evaluation that are
+	// injected into the context at startup. Context keys passed
+	// at runtime will override these values in case of conflict.
+	StartupContext map[string]interface{}
 }
 
 func (o ClientOptions) NewClient(provider Provider) *Client {
-	return &Client{o.Namespace, provider, &o.Environment}
+	return &Client{o.Namespace, provider, o.StartupContext}
 }
 
 func (c *Client) GetBool(ctx context.Context, key string) (bool, error) {
@@ -58,8 +56,9 @@ func (c *Client) GetJSON(ctx context.Context, key string, result interface{}) er
 }
 
 func (c *Client) wrap(ctx context.Context) context.Context {
-	if c.environment == nil {
+	if c.startupContext == nil {
 		return ctx
 	}
-	return Add(ctx, lekkoEnvironmentContextKey, *c.environment)
+
+	return Merge(ctx, c.startupContext)
 }
