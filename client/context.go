@@ -49,6 +49,7 @@ func Merge(ctx context.Context, lekkoCtx map[string]interface{}) context.Context
 			ls[k] = v
 		}
 	}
+	fmt.Printf("existing:%v, lekkoCtx:%v\n", existing, lekkoCtx)
 	return context.WithValue(ctx, lekkoKeyV1, ls)
 }
 
