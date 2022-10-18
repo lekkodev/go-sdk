@@ -35,8 +35,10 @@ type lekkoKey int
 // context that users of the golang sdk can pass in to lekko via context.Context.
 var lekkoKeyV1 lekkoKey
 
-// Merge allows you to pass arbitraty context variables in order to perform
+// Merge allows you to pass arbitrary context variables in order to perform
 // rules evaluation on your feature flags in real time.
+// Priority is given to existing keys already present in ctx.
+// TODO: allow users to run in safe mode, which will throw errors on ctx conflicts.
 // TODO: this is not thread-safe, make it thread-safe.
 func Merge(ctx context.Context, lekkoCtx map[string]interface{}) context.Context {
 	ls := lekkoContext(lekkoCtx)
