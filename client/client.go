@@ -16,7 +16,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 
 	"google.golang.org/protobuf/proto"
 )
@@ -53,7 +52,6 @@ func (c *Client) GetProto(ctx context.Context, key string, result proto.Message)
 }
 
 func (c *Client) GetJSON(ctx context.Context, key string, result interface{}) error {
-	fmt.Printf("startup context: %v\n", c.startupContext)
 	return c.provider.GetJSONFeature(c.wrap(ctx), key, c.namespace, result)
 }
 

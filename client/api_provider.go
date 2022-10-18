@@ -90,7 +90,6 @@ func (a *apiProvider) GetJSONFeature(ctx context.Context, key string, namespace 
 	if err != nil {
 		return errors.Wrap(err, "error transforming context")
 	}
-	fmt.Printf("lekko context, %v\n", lc)
 	req := connect.NewRequest(&backendv1beta1.GetJSONValueRequest{
 		Key:       key,
 		Namespace: namespace,

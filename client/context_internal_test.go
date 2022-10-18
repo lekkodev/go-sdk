@@ -69,6 +69,23 @@ func TestContextMergeOverwrite(t *testing.T) {
 	assert.EqualValues(t, m2, output)
 }
 
+func TestContextMergeDoesNotModifyArgs(t *testing.T) {
+	ctx := context.Background()
+
+	m1 := map[string]interface{}{
+		"a": 42,
+	}
+	ctx = Merge(ctx, m1)
+
+	m2 := map[string]interface{}{
+		"b": 12,
+	}
+	_ = Merge(ctx, m2)
+
+	assert.Len(t, m1, 1)
+	assert.Len(t, m2, 1)
+}
+
 func TestAddContextPairs(t *testing.T) {
 	ctx := context.Background()
 

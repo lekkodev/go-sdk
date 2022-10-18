@@ -37,20 +37,19 @@ var lekkoKeyV1 lekkoKey
 
 // Merge allows you to pass arbitrary context variables in order to perform
 // rules evaluation on your feature flags in real time.
-// Priority is given to existing keys already present in ctx.
+// Priority is given to newly added keys in lekkoCtx.
 // TODO: allow users to run in safe mode, which will throw errors on ctx conflicts.
 // TODO: this is not thread-safe, make it thread-safe.
 func Merge(ctx context.Context, lekkoCtx map[string]interface{}) context.Context {
-	ls := lekkoContext(lekkoCtx)
 	existing := fromContext(ctx)
+	mergedCtx := make(lekkoContext, len(existing))
 	for k, v := range existing {
-		// copy over existing context keys if they don't appear in the given context.
-		if _, ok := ls[k]; !ok {
-			ls[k] = v
-		}
+		mergedCtx[k] = v
 	}
-	fmt.Printf("existing:%v, lekkoCtx:%v\n", existing, lekkoCtx)
-	return context.WithValue(ctx, lekkoKeyV1, ls)
+	for k, v := range lekkoCtx {
+		mergedCtx[k] = v
+	}
+	return context.WithValue(ctx, lekkoKeyV1, mergedCtx)
 }
 
 func Add(ctx context.Context, key string, value interface{}) context.Context {
