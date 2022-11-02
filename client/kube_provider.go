@@ -65,7 +65,7 @@ func (k *kubeProvider) GetEvaluableFeature(ctx context.Context, key string, name
 	}
 	// This is quite gross, we need to think of a better abstraction here... maybe a `ParseFeatureRaw` method
 	// in encoding? Needs a bit more thought.
-	evalF, err := encoding.ParseFeature("", feature.FeatureFile{}, &metadata.NamespaceConfigRepoMetadata{Version: "v1beta3"}, &kubeFileProvider{fBytes})
+	evalF, err := encoding.ParseFeature(ctx, "", feature.FeatureFile{}, &metadata.NamespaceConfigRepoMetadata{Version: "v1beta3"}, &kubeFileProvider{fBytes})
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("error deserializing feature for key %s, in namespace %s via k8s configmap", key, namespace))
 	}

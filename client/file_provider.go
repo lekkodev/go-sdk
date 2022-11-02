@@ -18,6 +18,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -38,7 +40,9 @@ import (
 // options are not available.
 func NewFileProvider(pathToRoot string) (Provider, error) {
 	// TODO: this function should be refactored into the cli from the SDK.
-	rootMD, nsMDs, err := metadata.ParseFullConfigRepoMetadataStrict(context.Background(), pathToRoot, fs.LocalProvider())
+	lr := newLocalReader()
+	ctx := context.Background()
+	rootMD, nsMDs, err := metadata.ParseFullConfigRepoMetadataStrict(ctx, pathToRoot, lr)
 	if err != nil {
 		return nil, err
 	}
@@ -49,12 +53,12 @@ func NewFileProvider(pathToRoot string) (Provider, error) {
 		if !ok {
 			return nil, fmt.Errorf("could not find namespace metadata: %s", ns)
 		}
-		ffs, err := feature.GroupFeatureFiles(context.Background(), filepath.Join(pathToRoot, ns), nsMD, fs.LocalProvider(), false)
+		ffs, err := feature.GroupFeatureFiles(ctx, filepath.Join(pathToRoot, ns), lr)
 		if err != nil {
 			return nil, err
 		}
 		for _, ff := range ffs {
-			evalF, err := encoding.ParseFeature(pathToRoot, ff, nsMD, fs.LocalProvider())
+			evalF, err := encoding.ParseFeature(ctx, pathToRoot, ff, nsMD, lr)
 			if err != nil {
 				return nil, err
 			}
@@ -142,4 +146,34 @@ func (f *fileProvider) GetJSONFeature(ctx context.Context, key string, namespace
 		return errors.Wrap(err, fmt.Sprintf("failed to unmarshal json into go type %T", result))
 	}
 	return nil
+}
+
+type localReader struct{}
+
+func newLocalReader() *localReader {
+	return &localReader{}
+}
+
+func (lr *localReader) GetFileContents(_ context.Context, path string) ([]byte, error) {
+	return ioutil.ReadFile(path)
+}
+
+func (lr *localReader) GetDirContents(_ context.Context, path string) ([]fs.ProviderFile, error) {
+	fi, err := ioutil.ReadDir(path)
+	if err != nil {
+		return nil, errors.Wrap(err, "read dir")
+	}
+	var ret []fs.ProviderFile
+	for _, info := range fi {
+		ret = append(ret, fs.ProviderFile{
+			Name:  info.Name(),
+			Path:  filepath.Join(path, info.Name()),
+			IsDir: info.IsDir(),
+		})
+	}
+	return ret, nil
+}
+
+func (lr *localReader) IsNotExist(err error) bool {
+	return errors.Is(err, os.ErrNotExist)
 }

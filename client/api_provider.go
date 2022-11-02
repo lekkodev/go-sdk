@@ -33,16 +33,40 @@ const (
 	LekkoAPIKeyHeader = "apikey"
 )
 
-func NewAPIProvider(apiKey string) Provider {
+func NewAPIProvider(apiKey string, rk *RepositoryKey) Provider {
+	if rk == nil {
+		return nil
+	}
 	return &apiProvider{
 		apikey:      apiKey,
 		lekkoClient: backendv1beta1connect.NewConfigurationServiceClient(http.DefaultClient, LekkoURL),
+		rk:          rk,
+	}
+}
+
+// Identifies a configuration repository on github.com
+type RepositoryKey struct {
+	// The name of the github owner. Can be a github
+	// organization name or a personal account name.
+	OwnerName string
+	// The name of the repository on github.
+	RepoName string
+}
+
+func (rk *RepositoryKey) toProto() *backendv1beta1.RepositoryKey {
+	if rk == nil {
+		return nil
+	}
+	return &backendv1beta1.RepositoryKey{
+		OwnerName: rk.OwnerName,
+		RepoName:  rk.RepoName,
 	}
 }
 
 type apiProvider struct {
 	apikey      string
 	lekkoClient backendv1beta1connect.ConfigurationServiceClient
+	rk          *RepositoryKey
 }
 
 func (a *apiProvider) GetBoolFeature(ctx context.Context, key string, namespace string) (bool, error) {
@@ -54,6 +78,7 @@ func (a *apiProvider) GetBoolFeature(ctx context.Context, key string, namespace 
 		Key:       key,
 		Namespace: namespace,
 		Context:   lc,
+		RepoKey:   a.rk.toProto(),
 	})
 	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
 	resp, err := a.lekkoClient.GetBoolValue(ctx, req)
@@ -76,6 +101,7 @@ func (a *apiProvider) GetProtoFeature(ctx context.Context, key string, namespace
 		Key:       key,
 		Namespace: namespace,
 		Context:   lc,
+		RepoKey:   a.rk.toProto(),
 	})
 	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
 	resp, err := a.lekkoClient.GetProtoValue(ctx, req)
@@ -94,6 +120,7 @@ func (a *apiProvider) GetJSONFeature(ctx context.Context, key string, namespace 
 		Key:       key,
 		Namespace: namespace,
 		Context:   lc,
+		RepoKey:   a.rk.toProto(),
 	})
 	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
 	resp, err := a.lekkoClient.GetJSONValue(ctx, req)

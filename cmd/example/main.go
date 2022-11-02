@@ -30,7 +30,10 @@ func main() {
 		log.Fatal("Lekko API key not provided. Exiting...") // nolint
 	}
 
-	cl := client.NewClient("namespace-one", client.NewAPIProvider(*key))
-	flag, err := cl.GetBool(context.TODO(), "basic_feature_on")
+	cl := client.NewClient("default", client.NewAPIProvider(*key, &client.RepositoryKey{
+		OwnerName: "lekkodev",
+		RepoName:  "template",
+	}))
+	flag, err := cl.GetBool(context.TODO(), "example")
 	log.Printf("Retrieving feature flag: %v (err=%v)\n", flag, err) // nolint
 }
