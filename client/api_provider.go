@@ -33,13 +33,13 @@ const (
 	LekkoAPIKeyHeader = "apikey"
 )
 
-func NewAPIProvider(apiKey string, rk *RepositoryKey) Provider {
+func NewAPIProvider(lekkoURL, apiKey string, rk *RepositoryKey) Provider {
 	if rk == nil {
 		return nil
 	}
 	return &apiProvider{
 		apikey:      apiKey,
-		lekkoClient: backendv1beta1connect.NewConfigurationServiceClient(http.DefaultClient, LekkoURL),
+		lekkoClient: backendv1beta1connect.NewConfigurationServiceClient(http.DefaultClient, lekkoURL),
 		rk:          rk,
 	}
 }
