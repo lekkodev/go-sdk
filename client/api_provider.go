@@ -40,7 +40,7 @@ func NewAPIProvider(lekkoURL, apiKey string, rk *RepositoryKey) Provider {
 	fmt.Printf("sdk: starting the grpc client with url %s\n", lekkoURL)
 	return &apiProvider{
 		apikey:      apiKey,
-		lekkoClient: backendv1beta1connect.NewConfigurationServiceClient(http.DefaultClient, lekkoURL),
+		lekkoClient: backendv1beta1connect.NewConfigurationServiceClient(http.DefaultClient, lekkoURL, connect.WithGRPC()),
 		rk:          rk,
 	}
 }
