@@ -97,6 +97,8 @@ func (a *apiProvider) GetBoolFeature(ctx context.Context, key string, namespace 
 	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
 	resp, err := a.lekkoClient.GetBoolValue(ctx, req)
 	if err != nil {
+		fmt.Println(resp)
+		fmt.Println(resp.Header())
 		return false, errors.Wrap(err, "error hitting lekko backend")
 	}
 	return resp.Msg.GetValue(), nil
