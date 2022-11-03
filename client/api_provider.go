@@ -16,13 +16,16 @@ package client
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 
 	"github.com/lekkodev/cli/pkg/gen/proto/go-connect/lekko/backend/v1beta1/backendv1beta1connect"
 	backendv1beta1 "github.com/lekkodev/cli/pkg/gen/proto/go/lekko/backend/v1beta1"
 	"github.com/pkg/errors"
+	"golang.org/x/net/http2"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/bufbuild/connect-go"
@@ -39,9 +42,19 @@ func NewAPIProvider(lekkoURL, apiKey string, rk *RepositoryKey) Provider {
 	}
 	fmt.Printf("sdk: starting the grpc client with url %s\n", lekkoURL)
 	return &apiProvider{
-		apikey:      apiKey,
-		lekkoClient: backendv1beta1connect.NewConfigurationServiceClient(http.DefaultClient, lekkoURL, connect.WithGRPC()),
-		rk:          rk,
+		apikey: apiKey,
+		lekkoClient: backendv1beta1connect.NewConfigurationServiceClient(&http.Client{
+			Transport: &http2.Transport{
+				AllowHTTP: true,
+				DialTLS: func(network, addr string, _ *tls.Config) (net.Conn, error) {
+					// If you're also using this client for non-h2c traffic, you may want to
+					// delegate to tls.Dial if the network isn't TCP or the addr isn't in an
+					// allowlist.
+					return net.Dial(network, addr)
+				},
+			},
+		}, lekkoURL, connect.WithGRPC()),
+		rk: rk,
 	}
 }
 
