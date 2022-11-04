@@ -34,27 +34,44 @@ import (
 const (
 	LekkoURL          = "https://grpc.lekko.dev"
 	LekkoAPIKeyHeader = "apikey"
+	defaultSidecarURL = "https://localhost:50051"
 )
 
-func NewAPIProvider(lekkoURL, apiKey string, rk *RepositoryKey) Provider {
+// Fetches configuration directly from Lekko Backend.
+func NewBackendProvider(apiKey string, rk *RepositoryKey) Provider {
 	if rk == nil {
 		return nil
 	}
-	fmt.Printf("sdk: starting the grpc client with url %s\n", lekkoURL)
+	return &apiProvider{
+		apikey:      apiKey,
+		lekkoClient: backendv1beta1connect.NewConfigurationServiceClient(http.DefaultClient, LekkoURL),
+		rk:          rk,
+	}
+}
+
+// Fetches configuration from a lekko sidecar, likely running on the local network.
+func NewSidecarProvider(url, apiKey string, rk *RepositoryKey) Provider {
+	if rk == nil {
+		return nil
+	}
+	if url == "" {
+		url = defaultSidecarURL
+	}
+	// The sidecar exposes the same interface as the backend API, so we can transparently
+	// use the same underlying apiProvider implementation, just with different client config
+	// e.g. grpc instead of raw http.
+	// TODO: make use of tls config once the sidecar supports tls.
 	return &apiProvider{
 		apikey: apiKey,
 		lekkoClient: backendv1beta1connect.NewConfigurationServiceClient(&http.Client{
 			Transport: &http2.Transport{
 				AllowHTTP: true,
 				DialTLS: func(network, addr string, _ *tls.Config) (net.Conn, error) {
-					// If you're also using this client for non-h2c traffic, you may want to
-					// delegate to tls.Dial if the network isn't TCP or the addr isn't in an
-					// allowlist.
 					return net.Dial(network, addr)
 				},
 				DisableCompression: true,
 			},
-		}, lekkoURL, connect.WithGRPC()),
+		}, url, connect.WithGRPC()),
 		rk: rk,
 	}
 }
@@ -98,10 +115,6 @@ func (a *apiProvider) GetBoolFeature(ctx context.Context, key string, namespace 
 	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
 	resp, err := a.lekkoClient.GetBoolValue(ctx, req)
 	if err != nil {
-		fmt.Println(resp)
-		if resp != nil {
-			fmt.Println(resp.Header())
-		}
 		return false, errors.Wrap(err, "error hitting lekko backend")
 	}
 	return resp.Msg.GetValue(), nil
