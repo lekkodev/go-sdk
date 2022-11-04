@@ -69,7 +69,6 @@ func NewSidecarProvider(url, apiKey string, rk *RepositoryKey) Provider {
 				DialTLS: func(network, addr string, _ *tls.Config) (net.Conn, error) {
 					return net.Dial(network, addr)
 				},
-				DisableCompression: true,
 			},
 		}, url, connect.WithGRPC()),
 		rk: rk,
