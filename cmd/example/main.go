@@ -30,7 +30,7 @@ func main() {
 		log.Fatal("Lekko API key not provided. Exiting...") // nolint
 	}
 
-	cl := client.NewClient("default", client.NewAPIProvider(*key, &client.RepositoryKey{
+	cl := client.NewClient("default", client.NewBackendProvider(*key, &client.RepositoryKey{
 		OwnerName: "lekkodev",
 		RepoName:  "template",
 	}))

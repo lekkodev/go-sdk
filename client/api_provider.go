@@ -16,13 +16,16 @@ package client
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 
 	"github.com/lekkodev/cli/pkg/gen/proto/go-connect/lekko/backend/v1beta1/backendv1beta1connect"
 	backendv1beta1 "github.com/lekkodev/cli/pkg/gen/proto/go/lekko/backend/v1beta1"
 	"github.com/pkg/errors"
+	"golang.org/x/net/http2"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/bufbuild/connect-go"
@@ -31,9 +34,11 @@ import (
 const (
 	LekkoURL          = "https://grpc.lekko.dev"
 	LekkoAPIKeyHeader = "apikey"
+	defaultSidecarURL = "https://localhost:50051"
 )
 
-func NewAPIProvider(apiKey string, rk *RepositoryKey) Provider {
+// Fetches configuration directly from Lekko Backend.
+func NewBackendProvider(apiKey string, rk *RepositoryKey) Provider {
 	if rk == nil {
 		return nil
 	}
@@ -41,6 +46,32 @@ func NewAPIProvider(apiKey string, rk *RepositoryKey) Provider {
 		apikey:      apiKey,
 		lekkoClient: backendv1beta1connect.NewConfigurationServiceClient(http.DefaultClient, LekkoURL),
 		rk:          rk,
+	}
+}
+
+// Fetches configuration from a lekko sidecar, likely running on the local network.
+func NewSidecarProvider(url, apiKey string, rk *RepositoryKey) Provider {
+	if rk == nil {
+		return nil
+	}
+	if url == "" {
+		url = defaultSidecarURL
+	}
+	// The sidecar exposes the same interface as the backend API, so we can transparently
+	// use the same underlying apiProvider implementation, just with different client config
+	// e.g. grpc instead of raw http.
+	// TODO: make use of tls config once the sidecar supports tls.
+	return &apiProvider{
+		apikey: apiKey,
+		lekkoClient: backendv1beta1connect.NewConfigurationServiceClient(&http.Client{
+			Transport: &http2.Transport{
+				AllowHTTP: true,
+				DialTLS: func(network, addr string, _ *tls.Config) (net.Conn, error) {
+					return net.Dial(network, addr)
+				},
+			},
+		}, url, connect.WithGRPC()),
+		rk: rk,
 	}
 }
 
