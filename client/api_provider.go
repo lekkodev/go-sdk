@@ -52,6 +52,7 @@ func NewAPIProvider(lekkoURL, apiKey string, rk *RepositoryKey) Provider {
 					// allowlist.
 					return net.Dial(network, addr)
 				},
+				DisableCompression: true,
 			},
 		}, lekkoURL, connect.WithGRPC()),
 		rk: rk,
