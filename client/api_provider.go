@@ -50,9 +50,10 @@ func NewBackendProvider(apiKey string, rk *RepositoryKey) Provider {
 }
 
 // Fetches configuration from a lekko sidecar, likely running on the local network.
-func NewSidecarProvider(url, apiKey string, rk *RepositoryKey) Provider {
+// Will make an RPC to register the client, so providing context is preferred.
+func NewSidecarProvider(ctx context.Context, url, apiKey string, rk *RepositoryKey) (Provider, error) {
 	if rk == nil {
-		return nil
+		return nil, fmt.Errorf("no repository key provided")
 	}
 	if url == "" {
 		url = defaultSidecarURL
@@ -61,7 +62,7 @@ func NewSidecarProvider(url, apiKey string, rk *RepositoryKey) Provider {
 	// use the same underlying apiProvider implementation, just with different client config
 	// e.g. grpc instead of raw http.
 	// TODO: make use of tls config once the sidecar supports tls.
-	return &apiProvider{
+	provider := &apiProvider{
 		apikey: apiKey,
 		lekkoClient: backendv1beta1connect.NewConfigurationServiceClient(&http.Client{
 			Transport: &http2.Transport{
@@ -73,6 +74,10 @@ func NewSidecarProvider(url, apiKey string, rk *RepositoryKey) Provider {
 		}, url, connect.WithGRPC()),
 		rk: rk,
 	}
+	if err := provider.register(ctx); err != nil {
+		return nil, err
+	}
+	return provider, nil
 }
 
 // Identifies a configuration repository on github.com
@@ -98,6 +103,14 @@ type apiProvider struct {
 	apikey      string
 	lekkoClient backendv1beta1connect.ConfigurationServiceClient
 	rk          *RepositoryKey
+}
+
+// Should only be called on initialization.
+func (a *apiProvider) register(ctx context.Context) error {
+	req := connect.NewRequest(&backendv1beta1.RegisterRequest{RepoKey: a.rk.toProto()})
+	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
+	_, err := a.lekkoClient.Register(ctx, req)
+	return err
 }
 
 func (a *apiProvider) GetBoolFeature(ctx context.Context, key string, namespace string) (bool, error) {

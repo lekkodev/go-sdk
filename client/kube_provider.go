@@ -77,7 +77,7 @@ func (k *kubeProvider) GetBoolFeature(ctx context.Context, key string, namespace
 	if err != nil {
 		return false, err
 	}
-	resp, err := evalF.Evaluate(fromContext(ctx))
+	resp, _, err := evalF.Evaluate(fromContext(ctx))
 	if err != nil {
 		return false, err
 	}
@@ -99,7 +99,7 @@ func (k *kubeProvider) GetProtoFeature(ctx context.Context, key string, namespac
 	if err != nil {
 		return err
 	}
-	resp, err := evalF.Evaluate(fromContext(ctx))
+	resp, _, err := evalF.Evaluate(fromContext(ctx))
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ func (k *kubeProvider) GetJSONFeature(ctx context.Context, key string, namespace
 	if err != nil {
 		return err
 	}
-	resp, err := evalF.Evaluate(fromContext(ctx))
+	resp, _, err := evalF.Evaluate(fromContext(ctx))
 	if err != nil {
 		return err
 	}

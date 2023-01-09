@@ -58,6 +58,10 @@ func (tbc *testBackendClient) GetJSONValue(context.Context, *connect.Request[v1b
 	}), tbc.jsonErr
 }
 
+func (tbc *testBackendClient) Register(context.Context, *connect.Request[v1beta1.RegisterRequest]) (*connect.Response[v1beta1.RegisterResponse], error) {
+	return connect.NewResponse(&v1beta1.RegisterResponse{}), nil
+}
+
 func testProvider(backendCli *testBackendClient) Provider {
 	return &apiProvider{
 		lekkoClient: backendCli,
