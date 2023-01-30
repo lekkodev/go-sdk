@@ -32,7 +32,7 @@ import (
 )
 
 const (
-	LekkoURL          = "https://grpc.lekko.dev"
+	LekkoURL          = "https://prod.api.lekko.dev"
 	LekkoAPIKeyHeader = "apikey"
 	defaultSidecarURL = "https://localhost:50051"
 )
