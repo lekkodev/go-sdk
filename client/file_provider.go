@@ -18,19 +18,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
 
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/lekkodev/cli/pkg/encoding"
-	"github.com/lekkodev/cli/pkg/feature"
-	"github.com/lekkodev/cli/pkg/fs"
 	"github.com/lekkodev/cli/pkg/metadata"
+	"github.com/lekkodev/cli/pkg/repo"
 )
 
 // The file provider will load the result of a file into memory.
@@ -39,67 +35,45 @@ import (
 // This is meant as a backup for local testing when production configuration
 // options are not available.
 func NewFileProvider(pathToRoot string) (Provider, error) {
-	// TODO: this function should be refactored into the cli from the SDK.
-	lr := newLocalReader()
-	ctx := context.Background()
-	rootMD, nsMDs, err := metadata.ParseFullConfigRepoMetadataStrict(ctx, pathToRoot, lr)
+	ctx := context.TODO()
+	r, err := repo.NewLocal(pathToRoot)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "unable to initialize static bootstrap")
 	}
-	res := make(map[string]map[string]feature.EvaluableFeature)
-	for _, ns := range rootMD.Namespaces {
-		nsMap := make(map[string]feature.EvaluableFeature)
-		nsMD, ok := nsMDs[ns]
-		if !ok {
-			return nil, fmt.Errorf("could not find namespace metadata: %s", ns)
-		}
-		ffs, err := feature.GroupFeatureFiles(ctx, filepath.Join(pathToRoot, ns), lr)
+
+	rootMD, nsMDs, err := r.ParseMetadata(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse config repo metadata")
+	}
+
+	/*	registry, err := r.BuildDynamicTypeRegistry(ctx, rootMD.ProtoDirectory)
 		if err != nil {
-			return nil, err
-		}
-		for _, ff := range ffs {
-			evalF, err := encoding.ParseFeature(ctx, pathToRoot, ff, nsMD, lr)
-			if err != nil {
-				return nil, err
-			}
-			nsMap[ff.Name] = evalF
-		}
-		res[ns] = nsMap
-	}
-	return &fileProvider{res}, nil
+			return nil, errors.Wrap(err, "failed to build dynamic type registry")
+		}*/
+
+	return &fileProvider{repo: r, rootMD: rootMD, nsMDs: nsMDs}, nil
 }
 
 type fileProvider struct {
-	namespaceToFeatureMap map[string]map[string]feature.EvaluableFeature
+	repo   *repo.Repo
+	rootMD *metadata.RootConfigRepoMetadata
+	nsMDs  map[string]*metadata.NamespaceConfigRepoMetadata
 }
 
-func (f *fileProvider) GetEvaluableFeature(ctx context.Context, key string, namespace string) (feature.EvaluableFeature, error) {
-	nsMap, ok := f.namespaceToFeatureMap[namespace]
-	if !ok {
-		return nil, fmt.Errorf("unknown namepsace %s", namespace)
-	}
-
-	evalF, ok := nsMap[key]
-	if !ok {
-		return nil, fmt.Errorf("unknown feature key %s in namespace %s", key, namespace)
-	}
-	return evalF, nil
+func (f *fileProvider) eval(ctx context.Context, key string, namespace string) (*anypb.Any, error) {
+	return f.repo.Eval(ctx, namespace, key, fromContext(ctx))
 }
 
 func (f *fileProvider) GetBoolFeature(ctx context.Context, key string, namespace string) (bool, error) {
-	evalF, err := f.GetEvaluableFeature(ctx, key, namespace)
-	if err != nil {
-		return false, err
-	}
-	resp, _, err := evalF.Evaluate(fromContext(ctx))
+	a, err := f.eval(ctx, key, namespace)
 	if err != nil {
 		return false, err
 	}
 	boolVal := new(wrapperspb.BoolValue)
-	if !resp.MessageIs(boolVal) {
-		return false, fmt.Errorf("invalid type in config %T", resp)
+	if !a.MessageIs(boolVal) {
+		return false, fmt.Errorf("invalid type in config %T", a)
 	}
-	if err := resp.UnmarshalTo(boolVal); err != nil {
+	if err := a.UnmarshalTo(boolVal); err != nil {
 		return false, err
 	}
 	return boolVal.Value, nil
@@ -109,33 +83,25 @@ func (f *fileProvider) GetStringFeature(ctx context.Context, key string, namespa
 	return "", fmt.Errorf("unimplemented")
 }
 func (f *fileProvider) GetProtoFeature(ctx context.Context, key string, namespace string, result proto.Message) error {
-	evalF, err := f.GetEvaluableFeature(ctx, key, namespace)
+	a, err := f.eval(ctx, key, namespace)
 	if err != nil {
 		return err
 	}
-	resp, _, err := evalF.Evaluate(fromContext(ctx))
-	if err != nil {
-		return err
-	}
-	if err := resp.UnmarshalTo(result); err != nil {
+	if err := a.UnmarshalTo(result); err != nil {
 		return err
 	}
 	return nil
 }
 func (f *fileProvider) GetJSONFeature(ctx context.Context, key string, namespace string, result interface{}) error {
-	evalF, err := f.GetEvaluableFeature(ctx, key, namespace)
-	if err != nil {
-		return err
-	}
-	resp, _, err := evalF.Evaluate(fromContext(ctx))
+	a, err := f.eval(ctx, key, namespace)
 	if err != nil {
 		return err
 	}
 	val := &structpb.Value{}
-	if !resp.MessageIs(val) {
-		return fmt.Errorf("invalid type %T", resp)
+	if !a.MessageIs(val) {
+		return fmt.Errorf("invalid type %T", a)
 	}
-	if err := resp.UnmarshalTo(val); err != nil {
+	if err := a.UnmarshalTo(val); err != nil {
 		return fmt.Errorf("failed to unmarshal any to value: %w", err)
 	}
 	bytes, err := val.MarshalJSON()
@@ -146,34 +112,4 @@ func (f *fileProvider) GetJSONFeature(ctx context.Context, key string, namespace
 		return errors.Wrap(err, fmt.Sprintf("failed to unmarshal json into go type %T", result))
 	}
 	return nil
-}
-
-type localReader struct{}
-
-func newLocalReader() *localReader {
-	return &localReader{}
-}
-
-func (lr *localReader) GetFileContents(_ context.Context, path string) ([]byte, error) {
-	return ioutil.ReadFile(path)
-}
-
-func (lr *localReader) GetDirContents(_ context.Context, path string) ([]fs.ProviderFile, error) {
-	fi, err := ioutil.ReadDir(path)
-	if err != nil {
-		return nil, errors.Wrap(err, "read dir")
-	}
-	var ret []fs.ProviderFile
-	for _, info := range fi {
-		ret = append(ret, fs.ProviderFile{
-			Name:  info.Name(),
-			Path:  filepath.Join(path, info.Name()),
-			IsDir: info.IsDir(),
-		})
-	}
-	return ret, nil
-}
-
-func (lr *localReader) IsNotExist(err error) bool {
-	return errors.Is(err, os.ErrNotExist)
 }
