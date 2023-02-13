@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/bufbuild/connect-go v0.3.0
-	github.com/lekkodev/cli v0.0.0-20230107013647-cbb1589d823c
+	github.com/lekkodev/cli v0.2.4
 )
 
 require (
@@ -16,9 +16,6 @@ require (
 	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20220415221154-79c36419192d // indirect
 	github.com/bazelbuild/buildtools v0.0.0-20220907133145-b9bfff5d7f91 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
-	github.com/cli/browser v1.0.0 // indirect
-	github.com/cli/oauth v0.9.0 // indirect
-	github.com/cli/safeexec v1.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.8.0 // indirect
 	github.com/emirpasic/gods v1.12.0 // indirect

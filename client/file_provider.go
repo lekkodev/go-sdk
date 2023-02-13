@@ -29,6 +29,11 @@ import (
 	"github.com/lekkodev/cli/pkg/repo"
 )
 
+type noopAuthProvider struct{}
+
+func (*noopAuthProvider) GetUsername() string { return "" }
+func (*noopAuthProvider) GetToken() string    { return "" }
+
 // The file provider will load the result of a file into memory.
 // This file provider DOES NOT refresh from disk within the lifetime of the process.
 // fsnotify or similar technology will be implemented in a different provider.
@@ -36,7 +41,7 @@ import (
 // options are not available.
 func NewFileProvider(pathToRoot string) (Provider, error) {
 	ctx := context.TODO()
-	r, err := repo.NewLocal(pathToRoot)
+	r, err := repo.NewLocal(pathToRoot, &noopAuthProvider{})
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to initialize static bootstrap")
 	}
