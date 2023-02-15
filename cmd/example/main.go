@@ -30,7 +30,7 @@ func main() {
 	var provider client.Provider
 	if path != nil {
 		var err error
-		provider, err = client.NewFileProvider(*path)
+		provider, err = client.NewStaticProvider(*path)
 		if err != nil {
 			log.Fatalf("error when starting in static mode: %v\n", err) // nolint
 		}

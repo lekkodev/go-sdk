@@ -34,12 +34,9 @@ type noopAuthProvider struct{}
 func (*noopAuthProvider) GetUsername() string { return "" }
 func (*noopAuthProvider) GetToken() string    { return "" }
 
-// The file provider will load the result of a file into memory.
-// This file provider DOES NOT refresh from disk within the lifetime of the process.
-// fsnotify or similar technology will be implemented in a different provider.
-// This is meant as a backup for local testing when production configuration
-// options are not available.
-func NewFileProvider(pathToRoot string) (Provider, error) {
+// The static provider will read from a git repo via a relative path.
+// This may be useful for local testing when a sidecar is not available.
+func NewStaticProvider(pathToRoot string) (Provider, error) {
 	ctx := context.TODO()
 	r, err := repo.NewLocal(pathToRoot, &noopAuthProvider{})
 	if err != nil {
@@ -56,20 +53,20 @@ func NewFileProvider(pathToRoot string) (Provider, error) {
 			return nil, errors.Wrap(err, "failed to build dynamic type registry")
 		}*/
 
-	return &fileProvider{repo: r, rootMD: rootMD, nsMDs: nsMDs}, nil
+	return &staticProvider{repo: r, rootMD: rootMD, nsMDs: nsMDs}, nil
 }
 
-type fileProvider struct {
+type staticProvider struct {
 	repo   *repo.Repo
 	rootMD *metadata.RootConfigRepoMetadata
 	nsMDs  map[string]*metadata.NamespaceConfigRepoMetadata
 }
 
-func (f *fileProvider) eval(ctx context.Context, key string, namespace string) (*anypb.Any, error) {
+func (f *staticProvider) eval(ctx context.Context, key string, namespace string) (*anypb.Any, error) {
 	return f.repo.Eval(ctx, namespace, key, fromContext(ctx))
 }
 
-func (f *fileProvider) GetBoolFeature(ctx context.Context, key string, namespace string) (bool, error) {
+func (f *staticProvider) GetBoolFeature(ctx context.Context, key string, namespace string) (bool, error) {
 	a, err := f.eval(ctx, key, namespace)
 	if err != nil {
 		return false, err
@@ -84,10 +81,10 @@ func (f *fileProvider) GetBoolFeature(ctx context.Context, key string, namespace
 	return boolVal.Value, nil
 }
 
-func (f *fileProvider) GetStringFeature(ctx context.Context, key string, namespace string) (string, error) {
+func (f *staticProvider) GetStringFeature(ctx context.Context, key string, namespace string) (string, error) {
 	return "", fmt.Errorf("unimplemented")
 }
-func (f *fileProvider) GetProtoFeature(ctx context.Context, key string, namespace string, result proto.Message) error {
+func (f *staticProvider) GetProtoFeature(ctx context.Context, key string, namespace string, result proto.Message) error {
 	a, err := f.eval(ctx, key, namespace)
 	if err != nil {
 		return err
@@ -97,7 +94,7 @@ func (f *fileProvider) GetProtoFeature(ctx context.Context, key string, namespac
 	}
 	return nil
 }
-func (f *fileProvider) GetJSONFeature(ctx context.Context, key string, namespace string, result interface{}) error {
+func (f *staticProvider) GetJSONFeature(ctx context.Context, key string, namespace string, result interface{}) error {
 	a, err := f.eval(ctx, key, namespace)
 	if err != nil {
 		return err
