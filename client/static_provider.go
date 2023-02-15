@@ -48,11 +48,6 @@ func NewStaticProvider(pathToRoot string) (Provider, error) {
 		return nil, errors.Wrap(err, "failed to parse config repo metadata")
 	}
 
-	/*	registry, err := r.BuildDynamicTypeRegistry(ctx, rootMD.ProtoDirectory)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to build dynamic type registry")
-		}*/
-
 	return &staticProvider{repo: r, rootMD: rootMD, nsMDs: nsMDs}, nil
 }
 
