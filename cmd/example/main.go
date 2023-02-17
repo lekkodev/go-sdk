@@ -24,16 +24,25 @@ import (
 
 func main() {
 	key := flag.String("lekko-apikey", "", "API key for lekko given to your organization")
+	path := flag.String("lekko-static-path", "", "Optional bootstrap, if provided, will operate in static mode")
 	flag.Parse()
 
-	if key == nil {
+	var provider client.Provider
+	if path != nil {
+		var err error
+		provider, err = client.NewStaticProvider(*path)
+		if err != nil {
+			log.Fatalf("error when starting in static mode: %v\n", err) // nolint
+		}
+	} else if key == nil {
 		log.Fatal("Lekko API key not provided. Exiting...") // nolint
+	} else {
+		provider = client.NewBackendProvider(*key, &client.RepositoryKey{
+			OwnerName: "lekkodev",
+			RepoName:  "template",
+		})
 	}
-
-	cl := client.NewClient("default", client.NewBackendProvider(*key, &client.RepositoryKey{
-		OwnerName: "lekkodev",
-		RepoName:  "template",
-	}))
+	cl := client.NewClient("default", provider)
 	flag, err := cl.GetBool(context.TODO(), "example")
 	log.Printf("Retrieving feature flag: %v (err=%v)\n", flag, err) // nolint
 }
