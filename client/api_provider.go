@@ -132,8 +132,61 @@ func (a *apiProvider) GetBoolFeature(ctx context.Context, key string, namespace 
 	return resp.Msg.GetValue(), nil
 }
 
+func (a *apiProvider) GetIntFeature(ctx context.Context, key string, namespace string) (int64, error) {
+	lc, err := toProto(fromContext(ctx))
+	if err != nil {
+		return 0, errors.Wrap(err, "error transforming context")
+	}
+	req := connect.NewRequest(&backendv1beta1.GetIntValueRequest{
+		Key:       key,
+		Namespace: namespace,
+		Context:   lc,
+		RepoKey:   a.rk.toProto(),
+	})
+	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
+	resp, err := a.lekkoClient.GetIntValue(ctx, req)
+	if err != nil {
+		return 0, errors.Wrap(err, "error hitting lekko backend")
+	}
+	return resp.Msg.GetValue(), nil
+}
+
+func (a *apiProvider) GetFloatFeature(ctx context.Context, key string, namespace string) (float64, error) {
+	lc, err := toProto(fromContext(ctx))
+	if err != nil {
+		return 0, errors.Wrap(err, "error transforming context")
+	}
+	req := connect.NewRequest(&backendv1beta1.GetFloatValueRequest{
+		Key:       key,
+		Namespace: namespace,
+		Context:   lc,
+		RepoKey:   a.rk.toProto(),
+	})
+	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
+	resp, err := a.lekkoClient.GetFloatValue(ctx, req)
+	if err != nil {
+		return 0, errors.Wrap(err, "error hitting lekko backend")
+	}
+	return resp.Msg.GetValue(), nil
+}
+
 func (a *apiProvider) GetStringFeature(ctx context.Context, key string, namespace string) (string, error) {
-	return "", fmt.Errorf("unimplemented")
+	lc, err := toProto(fromContext(ctx))
+	if err != nil {
+		return "", errors.Wrap(err, "error transforming context")
+	}
+	req := connect.NewRequest(&backendv1beta1.GetStringValueRequest{
+		Key:       key,
+		Namespace: namespace,
+		Context:   lc,
+		RepoKey:   a.rk.toProto(),
+	})
+	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
+	resp, err := a.lekkoClient.GetStringValue(ctx, req)
+	if err != nil {
+		return "", errors.Wrap(err, "error hitting lekko backend")
+	}
+	return resp.Msg.GetValue(), nil
 }
 
 func (a *apiProvider) GetProtoFeature(ctx context.Context, key string, namespace string, result proto.Message) error {
