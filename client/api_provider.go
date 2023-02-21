@@ -24,11 +24,12 @@ import (
 
 	"github.com/lekkodev/cli/pkg/gen/proto/go-connect/lekko/backend/v1beta1/backendv1beta1connect"
 	backendv1beta1 "github.com/lekkodev/cli/pkg/gen/proto/go/lekko/backend/v1beta1"
+
+	"github.com/bufbuild/connect-go"
+	"github.com/cenkalti/backoff/v4"
 	"github.com/pkg/errors"
 	"golang.org/x/net/http2"
 	"google.golang.org/protobuf/proto"
-
-	"github.com/bufbuild/connect-go"
 )
 
 const (
@@ -37,23 +38,34 @@ const (
 	defaultSidecarURL = "https://localhost:50051"
 )
 
-// Fetches configuration directly from Lekko Backend.
-func NewBackendProvider(apiKey string, rk *RepositoryKey) Provider {
+type CloseFunc func(context.Context) error
+
+// Fetches configuration directly from Lekko Backend APIs.
+// This also make repeated RPCs to register the client, so providing a context with a timeout
+// is strongly recommended. A function is returned to close the client. It is also strongly recommended
+// to call this when the program is exiting or the lekko provider is no longer needed.
+func ConnectAPIProvider(ctx context.Context, apiKey string, rk *RepositoryKey) (Provider, CloseFunc, error) {
 	if rk == nil {
-		return nil
+		return nil, nil, fmt.Errorf("no repository key provided")
 	}
-	return &apiProvider{
+	provider := &apiProvider{
 		apikey:      apiKey,
 		lekkoClient: backendv1beta1connect.NewConfigurationServiceClient(http.DefaultClient, LekkoURL),
 		rk:          rk,
 	}
+	if err := provider.register(ctx); err != nil {
+		return nil, nil, err
+	}
+	return provider, provider.deregister, nil
 }
 
 // Fetches configuration from a lekko sidecar, likely running on the local network.
-// Will make an RPC to register the client, so providing context is preferred.
-func NewSidecarProvider(ctx context.Context, url, apiKey string, rk *RepositoryKey) (Provider, error) {
+// Will make repeated RPCs to register the client, so providing context with a timeout is
+// strongly preferred. A function is returned to close the client. It is also strongly recommended
+// to call this when the program is exiting or the lekko provider is no longer needed.
+func ConnectSidecarProvider(ctx context.Context, url, apiKey string, rk *RepositoryKey) (Provider, func(context.Context) error, error) {
 	if rk == nil {
-		return nil, fmt.Errorf("no repository key provided")
+		return nil, nil, fmt.Errorf("no repository key provided")
 	}
 	if url == "" {
 		url = defaultSidecarURL
@@ -75,9 +87,9 @@ func NewSidecarProvider(ctx context.Context, url, apiKey string, rk *RepositoryK
 		rk: rk,
 	}
 	if err := provider.register(ctx); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return provider, nil
+	return provider, provider.deregister, nil
 }
 
 // Identifies a configuration repository on github.com
@@ -106,11 +118,20 @@ type apiProvider struct {
 }
 
 // Should only be called on initialization.
+// This performs an exponential backoff until the context is cancelled.
 func (a *apiProvider) register(ctx context.Context) error {
-	req := connect.NewRequest(&backendv1beta1.RegisterRequest{RepoKey: a.rk.toProto()})
-	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
-	_, err := a.lekkoClient.Register(ctx, req)
-	return err
+	op := func() error {
+		req := connect.NewRequest(&backendv1beta1.RegisterRequest{RepoKey: a.rk.toProto()})
+		req.Header().Set(LekkoAPIKeyHeader, a.apikey)
+		_, err := a.lekkoClient.Register(ctx, req)
+		return err
+	}
+	return backoff.Retry(op, backoff.WithContext(backoff.NewExponentialBackOff(), ctx))
+}
+
+func (a *apiProvider) deregister(ctx context.Context) error {
+	// TODO
+	return nil
 }
 
 func (a *apiProvider) GetBoolFeature(ctx context.Context, key string, namespace string) (bool, error) {
