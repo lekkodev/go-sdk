@@ -47,6 +47,18 @@ func (c *Client) GetBool(ctx context.Context, key string) (bool, error) {
 	return c.provider.GetBoolFeature(c.wrap(ctx), key, c.namespace)
 }
 
+func (c *Client) GetInt(ctx context.Context, key string) (int64, error) {
+	return c.provider.GetIntFeature(c.wrap(ctx), key, c.namespace)
+}
+
+func (c *Client) GetFloat(ctx context.Context, key string) (float64, error) {
+	return c.provider.GetFloatFeature(c.wrap(ctx), key, c.namespace)
+}
+
+func (c *Client) GetString(ctx context.Context, key string) (string, error) {
+	return c.provider.GetStringFeature(c.wrap(ctx), key, c.namespace)
+}
+
 func (c *Client) GetProto(ctx context.Context, key string, result proto.Message) error {
 	return c.provider.GetProtoFeature(c.wrap(ctx), key, c.namespace, result)
 }

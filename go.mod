@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/bufbuild/connect-go v0.3.0
-	github.com/lekkodev/cli v0.2.4
+	github.com/lekkodev/cli v0.2.6-0.20230221180853-62f233fe5e2f
 )
 
 require (
