@@ -38,15 +38,12 @@ const (
 	defaultSidecarURL = "https://localhost:50051"
 )
 
-type CloseFunc func(context.Context) error
-
 // Fetches configuration directly from Lekko Backend APIs.
 // This also make repeated RPCs to register the client, so providing a context with a timeout
-// is strongly recommended. A function is returned to close the client. It is also strongly recommended
-// to call this when the program is exiting or the lekko provider is no longer needed.
-func ConnectAPIProvider(ctx context.Context, apiKey string, rk *RepositoryKey) (Provider, CloseFunc, error) {
+// is strongly recommended.
+func ConnectAPIProvider(ctx context.Context, apiKey string, rk *RepositoryKey) (Provider, error) {
 	if rk == nil {
-		return nil, nil, fmt.Errorf("no repository key provided")
+		return nil, fmt.Errorf("no repository key provided")
 	}
 	provider := &apiProvider{
 		apikey:      apiKey,
@@ -54,18 +51,18 @@ func ConnectAPIProvider(ctx context.Context, apiKey string, rk *RepositoryKey) (
 		rk:          rk,
 	}
 	if err := provider.register(ctx); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return provider, provider.deregister, nil
+	return provider, nil
 }
 
 // Fetches configuration from a lekko sidecar, likely running on the local network.
 // Will make repeated RPCs to register the client, so providing context with a timeout is
 // strongly preferred. A function is returned to close the client. It is also strongly recommended
 // to call this when the program is exiting or the lekko provider is no longer needed.
-func ConnectSidecarProvider(ctx context.Context, url, apiKey string, rk *RepositoryKey) (Provider, func(context.Context) error, error) {
+func ConnectSidecarProvider(ctx context.Context, url, apiKey string, rk *RepositoryKey) (Provider, error) {
 	if rk == nil {
-		return nil, nil, fmt.Errorf("no repository key provided")
+		return nil, fmt.Errorf("no repository key provided")
 	}
 	if url == "" {
 		url = defaultSidecarURL
@@ -87,9 +84,9 @@ func ConnectSidecarProvider(ctx context.Context, url, apiKey string, rk *Reposit
 		rk: rk,
 	}
 	if err := provider.register(ctx); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return provider, provider.deregister, nil
+	return provider, nil
 }
 
 // Identifies a configuration repository on github.com
@@ -129,9 +126,11 @@ func (a *apiProvider) register(ctx context.Context) error {
 	return backoff.Retry(op, backoff.WithContext(backoff.NewExponentialBackOff(), ctx))
 }
 
-func (a *apiProvider) deregister(ctx context.Context) error {
-	// TODO
-	return nil
+func (a *apiProvider) Close(ctx context.Context) error {
+	req := connect.NewRequest(&backendv1beta1.DeregisterRequest{})
+	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
+	_, err := a.lekkoClient.Deregister(ctx, req)
+	return err
 }
 
 func (a *apiProvider) GetBoolFeature(ctx context.Context, key string, namespace string) (bool, error) {
@@ -153,8 +152,61 @@ func (a *apiProvider) GetBoolFeature(ctx context.Context, key string, namespace 
 	return resp.Msg.GetValue(), nil
 }
 
+func (a *apiProvider) GetIntFeature(ctx context.Context, key string, namespace string) (int64, error) {
+	lc, err := toProto(fromContext(ctx))
+	if err != nil {
+		return 0, errors.Wrap(err, "error transforming context")
+	}
+	req := connect.NewRequest(&backendv1beta1.GetIntValueRequest{
+		Key:       key,
+		Namespace: namespace,
+		Context:   lc,
+		RepoKey:   a.rk.toProto(),
+	})
+	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
+	resp, err := a.lekkoClient.GetIntValue(ctx, req)
+	if err != nil {
+		return 0, errors.Wrap(err, "error hitting lekko backend")
+	}
+	return resp.Msg.GetValue(), nil
+}
+
+func (a *apiProvider) GetFloatFeature(ctx context.Context, key string, namespace string) (float64, error) {
+	lc, err := toProto(fromContext(ctx))
+	if err != nil {
+		return 0, errors.Wrap(err, "error transforming context")
+	}
+	req := connect.NewRequest(&backendv1beta1.GetFloatValueRequest{
+		Key:       key,
+		Namespace: namespace,
+		Context:   lc,
+		RepoKey:   a.rk.toProto(),
+	})
+	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
+	resp, err := a.lekkoClient.GetFloatValue(ctx, req)
+	if err != nil {
+		return 0, errors.Wrap(err, "error hitting lekko backend")
+	}
+	return resp.Msg.GetValue(), nil
+}
+
 func (a *apiProvider) GetStringFeature(ctx context.Context, key string, namespace string) (string, error) {
-	return "", fmt.Errorf("unimplemented")
+	lc, err := toProto(fromContext(ctx))
+	if err != nil {
+		return "", errors.Wrap(err, "error transforming context")
+	}
+	req := connect.NewRequest(&backendv1beta1.GetStringValueRequest{
+		Key:       key,
+		Namespace: namespace,
+		Context:   lc,
+		RepoKey:   a.rk.toProto(),
+	})
+	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
+	resp, err := a.lekkoClient.GetStringValue(ctx, req)
+	if err != nil {
+		return "", errors.Wrap(err, "error hitting lekko backend")
+	}
+	return resp.Msg.GetValue(), nil
 }
 
 func (a *apiProvider) GetProtoFeature(ctx context.Context, key string, namespace string, result proto.Message) error {

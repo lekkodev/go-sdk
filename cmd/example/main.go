@@ -29,7 +29,6 @@ func main() {
 	flag.Parse()
 
 	var provider client.Provider
-	var closeF client.CloseFunc
 	if path != nil {
 		var err error
 		provider, err = client.NewStaticProvider(*path)
@@ -42,7 +41,7 @@ func main() {
 		var err error
 		ctx, cancelF := context.WithTimeout(context.Background(), time.Second)
 		defer cancelF()
-		provider, closeF, err = client.ConnectAPIProvider(ctx, *key, &client.RepositoryKey{
+		provider, err = client.ConnectAPIProvider(ctx, *key, &client.RepositoryKey{
 			OwnerName: "lekkodev",
 			RepoName:  "template",
 		})
@@ -50,12 +49,12 @@ func main() {
 			log.Fatalf("error when starting in API mode: %v\n", err) // nolint
 		}
 	}
+	cl, closeF := client.NewClient("default", provider)
 	defer func() {
-		if closeF != nil {
-			closeF(context.Background())
+		if err := closeF(context.Background()); err != nil {
+			log.Printf("error closing lekko client: %v\n", err) // nolint
 		}
 	}()
-	cl := client.NewClient("default", provider)
 	flag, err := cl.GetBool(context.TODO(), "example")
 	log.Printf("Retrieving feature flag: %v (err=%v)\n", flag, err) // nolint
 }

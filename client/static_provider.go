@@ -61,6 +61,9 @@ func (f *staticProvider) eval(ctx context.Context, key string, namespace string)
 	return f.repo.Eval(ctx, namespace, key, fromContext(ctx))
 }
 
+// noop
+func (f *staticProvider) Close(ctx context.Context) error { return nil }
+
 func (f *staticProvider) GetBoolFeature(ctx context.Context, key string, namespace string) (bool, error) {
 	a, err := f.eval(ctx, key, namespace)
 	if err != nil {
@@ -73,12 +76,54 @@ func (f *staticProvider) GetBoolFeature(ctx context.Context, key string, namespa
 	if err := a.UnmarshalTo(boolVal); err != nil {
 		return false, err
 	}
-	return boolVal.Value, nil
+	return boolVal.GetValue(), nil
+}
+
+func (f *staticProvider) GetIntFeature(ctx context.Context, key string, namespace string) (int64, error) {
+	a, err := f.eval(ctx, key, namespace)
+	if err != nil {
+		return 0, err
+	}
+	intVal := new(wrapperspb.Int64Value)
+	if !a.MessageIs(intVal) {
+		return 0, fmt.Errorf("invalid type in config %T", a)
+	}
+	if err := a.UnmarshalTo(intVal); err != nil {
+		return 0, err
+	}
+	return intVal.GetValue(), nil
+}
+
+func (f *staticProvider) GetFloatFeature(ctx context.Context, key string, namespace string) (float64, error) {
+	a, err := f.eval(ctx, key, namespace)
+	if err != nil {
+		return 0, err
+	}
+	floatVal := new(wrapperspb.DoubleValue)
+	if !a.MessageIs(floatVal) {
+		return 0, fmt.Errorf("invalid type in config %T", a)
+	}
+	if err := a.UnmarshalTo(floatVal); err != nil {
+		return 0, err
+	}
+	return floatVal.GetValue(), nil
 }
 
 func (f *staticProvider) GetStringFeature(ctx context.Context, key string, namespace string) (string, error) {
-	return "", fmt.Errorf("unimplemented")
+	a, err := f.eval(ctx, key, namespace)
+	if err != nil {
+		return "", err
+	}
+	stringVal := new(wrapperspb.StringValue)
+	if !a.MessageIs(stringVal) {
+		return "", fmt.Errorf("invalid type in config %T", a)
+	}
+	if err := a.UnmarshalTo(stringVal); err != nil {
+		return "", err
+	}
+	return stringVal.GetValue(), nil
 }
+
 func (f *staticProvider) GetProtoFeature(ctx context.Context, key string, namespace string, result proto.Message) error {
 	a, err := f.eval(ctx, key, namespace)
 	if err != nil {

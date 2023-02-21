@@ -23,7 +23,11 @@ import (
 // A provider evaluates configuration from a number of sources.
 type Provider interface {
 	GetBoolFeature(ctx context.Context, key string, namespace string) (bool, error)
+	GetIntFeature(ctx context.Context, key string, namespace string) (int64, error)
+	GetFloatFeature(ctx context.Context, key string, namespace string) (float64, error)
 	GetStringFeature(ctx context.Context, key string, namespace string) (string, error)
 	GetProtoFeature(ctx context.Context, key string, namespace string, result proto.Message) error
 	GetJSONFeature(ctx context.Context, key string, namespace string, result interface{}) error
+	// Error will get called by the closure returned in Client initialization.
+	Close(ctx context.Context) error
 }

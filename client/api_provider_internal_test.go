@@ -30,16 +30,37 @@ import (
 )
 
 type testBackendClient struct {
-	boolVal                    bool
-	protoVal                   proto.Message
-	jsonVal                    []byte
-	boolErr, protoErr, jsonErr error
+	boolVal   bool
+	intVal    int64
+	floatVal  float64
+	stringVal string
+	protoVal  proto.Message
+	jsonVal   []byte
+	err       error
 }
 
 func (tbc *testBackendClient) GetBoolValue(ctx context.Context, req *connect.Request[v1beta1.GetBoolValueRequest]) (*connect.Response[v1beta1.GetBoolValueResponse], error) {
 	return connect.NewResponse(&v1beta1.GetBoolValueResponse{
 		Value: tbc.boolVal,
-	}), tbc.boolErr
+	}), tbc.err
+}
+
+func (tbc *testBackendClient) GetIntValue(ctx context.Context, req *connect.Request[v1beta1.GetIntValueRequest]) (*connect.Response[v1beta1.GetIntValueResponse], error) {
+	return connect.NewResponse(&v1beta1.GetIntValueResponse{
+		Value: tbc.intVal,
+	}), tbc.err
+}
+
+func (tbc *testBackendClient) GetFloatValue(ctx context.Context, req *connect.Request[v1beta1.GetFloatValueRequest]) (*connect.Response[v1beta1.GetFloatValueResponse], error) {
+	return connect.NewResponse(&v1beta1.GetFloatValueResponse{
+		Value: tbc.floatVal,
+	}), tbc.err
+}
+
+func (tbc *testBackendClient) GetStringValue(ctx context.Context, req *connect.Request[v1beta1.GetStringValueRequest]) (*connect.Response[v1beta1.GetStringValueResponse], error) {
+	return connect.NewResponse(&v1beta1.GetStringValueResponse{
+		Value: tbc.stringVal,
+	}), tbc.err
 }
 
 func (tbc *testBackendClient) GetProtoValue(context.Context, *connect.Request[v1beta1.GetProtoValueRequest]) (*connect.Response[v1beta1.GetProtoValueResponse], error) {
@@ -49,17 +70,21 @@ func (tbc *testBackendClient) GetProtoValue(context.Context, *connect.Request[v1
 	}
 	return connect.NewResponse(&v1beta1.GetProtoValueResponse{
 		Value: anyVal,
-	}), tbc.protoErr
+	}), tbc.err
 }
 
 func (tbc *testBackendClient) GetJSONValue(context.Context, *connect.Request[v1beta1.GetJSONValueRequest]) (*connect.Response[v1beta1.GetJSONValueResponse], error) {
 	return connect.NewResponse(&v1beta1.GetJSONValueResponse{
 		Value: tbc.jsonVal,
-	}), tbc.jsonErr
+	}), tbc.err
 }
 
 func (tbc *testBackendClient) Register(context.Context, *connect.Request[v1beta1.RegisterRequest]) (*connect.Response[v1beta1.RegisterResponse], error) {
 	return connect.NewResponse(&v1beta1.RegisterResponse{}), nil
+}
+
+func (tbc *testBackendClient) Deregister(ctx context.Context, req *connect.Request[v1beta1.DeregisterRequest]) (*connect.Response[v1beta1.DeregisterResponse], error) {
+	return connect.NewResponse(&v1beta1.DeregisterResponse{}), nil
 }
 
 func testProvider(backendCli *testBackendClient) Provider {
@@ -77,8 +102,50 @@ func TestGetBoolFeature(t *testing.T) {
 	assert.True(t, result)
 
 	// test passing up backend error
-	cli = testProvider(&testBackendClient{boolErr: errors.New("error")})
+	cli = testProvider(&testBackendClient{err: errors.New("error")})
 	_, err = cli.GetBoolFeature(ctx, "test_key", "namespace")
+	assert.Error(t, err)
+}
+
+func TestGetIntFeature(t *testing.T) {
+	// success
+	ctx := context.Background()
+	cli := testProvider(&testBackendClient{intVal: 8})
+	result, err := cli.GetIntFeature(ctx, "test_key", "namespace")
+	assert.NoError(t, err)
+	assert.Equal(t, int64(8), result)
+
+	// test passing up backend error
+	cli = testProvider(&testBackendClient{err: errors.New("error")})
+	_, err = cli.GetIntFeature(ctx, "test_key", "namespace")
+	assert.Error(t, err)
+}
+
+func TestGetFloatFeature(t *testing.T) {
+	// success
+	ctx := context.Background()
+	cli := testProvider(&testBackendClient{floatVal: 8.89})
+	result, err := cli.GetFloatFeature(ctx, "test_key", "namespace")
+	assert.NoError(t, err)
+	assert.Equal(t, 8.89, result)
+
+	// test passing up backend error
+	cli = testProvider(&testBackendClient{err: errors.New("error")})
+	_, err = cli.GetFloatFeature(ctx, "test_key", "namespace")
+	assert.Error(t, err)
+}
+
+func TestGetStringFeature(t *testing.T) {
+	// success
+	ctx := context.Background()
+	cli := testProvider(&testBackendClient{stringVal: "foo"})
+	result, err := cli.GetStringFeature(ctx, "test_key", "namespace")
+	assert.NoError(t, err)
+	assert.Equal(t, "foo", result)
+
+	// test passing up backend error
+	cli = testProvider(&testBackendClient{err: errors.New("error")})
+	_, err = cli.GetStringFeature(ctx, "test_key", "namespace")
 	assert.Error(t, err)
 }
 
@@ -91,7 +158,7 @@ func TestGetProtoFeature(t *testing.T) {
 	assert.EqualValues(t, int64(59), result.Value)
 
 	// test passing up backend error
-	cli = testProvider(&testBackendClient{protoVal: wrapperspb.Int64(59), protoErr: errors.New("error")})
+	cli = testProvider(&testBackendClient{protoVal: wrapperspb.Int64(59), err: errors.New("error")})
 	assert.Error(t, cli.GetProtoFeature(ctx, "test_key", "namespace", result))
 
 	// type mismatch in proto value
@@ -128,7 +195,7 @@ func TestGetJSONFeature(t *testing.T) {
 	assert.EqualValues(t, ts, result)
 
 	// test passing up backend error
-	cli = testProvider(&testBackendClient{jsonVal: bytes, jsonErr: errors.New("error")})
+	cli = testProvider(&testBackendClient{jsonVal: bytes, err: errors.New("error")})
 	assert.Error(t, cli.GetJSONFeature(ctx, "test_key", "namespace", result))
 
 	// type mismatch in result
