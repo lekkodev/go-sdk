@@ -25,6 +25,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/lekkodev/cli/pkg/feature"
 	"github.com/lekkodev/cli/pkg/metadata"
 	"github.com/lekkodev/cli/pkg/repo"
 )
@@ -57,13 +58,16 @@ type staticProvider struct {
 	nsMDs  map[string]*metadata.NamespaceConfigRepoMetadata
 }
 
-func (f *staticProvider) eval(ctx context.Context, key string, namespace string) (*anypb.Any, error) {
+func (f *staticProvider) eval(ctx context.Context, key string, namespace string) (*anypb.Any, feature.FeatureType, error) {
 	return f.repo.Eval(ctx, namespace, key, fromContext(ctx))
 }
 
 func (f *staticProvider) GetBoolFeature(ctx context.Context, key string, namespace string) (bool, error) {
-	a, err := f.eval(ctx, key, namespace)
+	a, ft, err := f.eval(ctx, key, namespace)
 	if err != nil {
+		return false, err
+	}
+	if err := expectFeatureType(feature.FeatureTypeBool, ft); err != nil {
 		return false, err
 	}
 	boolVal := new(wrapperspb.BoolValue)
@@ -77,8 +81,11 @@ func (f *staticProvider) GetBoolFeature(ctx context.Context, key string, namespa
 }
 
 func (f *staticProvider) GetIntFeature(ctx context.Context, key string, namespace string) (int64, error) {
-	a, err := f.eval(ctx, key, namespace)
+	a, ft, err := f.eval(ctx, key, namespace)
 	if err != nil {
+		return 0, err
+	}
+	if err := expectFeatureType(feature.FeatureTypeInt, ft); err != nil {
 		return 0, err
 	}
 	intVal := new(wrapperspb.Int64Value)
@@ -92,8 +99,11 @@ func (f *staticProvider) GetIntFeature(ctx context.Context, key string, namespac
 }
 
 func (f *staticProvider) GetFloatFeature(ctx context.Context, key string, namespace string) (float64, error) {
-	a, err := f.eval(ctx, key, namespace)
+	a, ft, err := f.eval(ctx, key, namespace)
 	if err != nil {
+		return 0, err
+	}
+	if err := expectFeatureType(feature.FeatureTypeFloat, ft); err != nil {
 		return 0, err
 	}
 	floatVal := new(wrapperspb.DoubleValue)
@@ -107,8 +117,11 @@ func (f *staticProvider) GetFloatFeature(ctx context.Context, key string, namesp
 }
 
 func (f *staticProvider) GetStringFeature(ctx context.Context, key string, namespace string) (string, error) {
-	a, err := f.eval(ctx, key, namespace)
+	a, ft, err := f.eval(ctx, key, namespace)
 	if err != nil {
+		return "", err
+	}
+	if err := expectFeatureType(feature.FeatureTypeString, ft); err != nil {
 		return "", err
 	}
 	stringVal := new(wrapperspb.StringValue)
@@ -122,8 +135,11 @@ func (f *staticProvider) GetStringFeature(ctx context.Context, key string, names
 }
 
 func (f *staticProvider) GetProtoFeature(ctx context.Context, key string, namespace string, result proto.Message) error {
-	a, err := f.eval(ctx, key, namespace)
+	a, ft, err := f.eval(ctx, key, namespace)
 	if err != nil {
+		return err
+	}
+	if err := expectFeatureType(feature.FeatureTypeProto, ft); err != nil {
 		return err
 	}
 	if err := a.UnmarshalTo(result); err != nil {
@@ -132,8 +148,11 @@ func (f *staticProvider) GetProtoFeature(ctx context.Context, key string, namesp
 	return nil
 }
 func (f *staticProvider) GetJSONFeature(ctx context.Context, key string, namespace string, result interface{}) error {
-	a, err := f.eval(ctx, key, namespace)
+	a, ft, err := f.eval(ctx, key, namespace)
 	if err != nil {
+		return err
+	}
+	if err := expectFeatureType(feature.FeatureTypeJSON, ft); err != nil {
 		return err
 	}
 	val := &structpb.Value{}
@@ -151,4 +170,11 @@ func (f *staticProvider) GetJSONFeature(ctx context.Context, key string, namespa
 		return errors.Wrap(err, fmt.Sprintf("failed to unmarshal json into go type %T", result))
 	}
 	return nil
+}
+
+func expectFeatureType(expected, actual feature.FeatureType) error {
+	if expected == actual {
+		return nil
+	}
+	return errors.Errorf("requested feature is of type %s, not %s", actual, expected)
 }
