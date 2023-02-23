@@ -83,6 +83,10 @@ func (tbc *testBackendClient) Register(context.Context, *connect.Request[v1beta1
 	return connect.NewResponse(&v1beta1.RegisterResponse{}), nil
 }
 
+func (tbc *testBackendClient) Deregister(context.Context, *connect.Request[v1beta1.DeregisterRequest]) (*connect.Response[v1beta1.DeregisterResponse], error) {
+	return connect.NewResponse(&v1beta1.DeregisterResponse{}), nil
+}
+
 func testProvider(backendCli *testBackendClient) Provider {
 	return &apiProvider{
 		lekkoClient: backendCli,
