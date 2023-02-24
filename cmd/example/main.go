@@ -46,7 +46,7 @@ func main() {
 			RepoName:  "template",
 		})
 		if err != nil {
-			log.Fatalf("error when starting in API mode: %v\n", err) // nolint
+			log.Fatalf("error when starting in API mode: %v\n", err)
 		}
 	}
 	cl, closeF := client.NewClient("default", provider)
