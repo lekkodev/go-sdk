@@ -173,6 +173,9 @@ func (f *staticProvider) GetJSONFeature(ctx context.Context, key string, namespa
 }
 
 func expectFeatureType(expected, actual feature.FeatureType) error {
+	if len(actual) == 0 {
+		return nil // backwards compatibility
+	}
 	if expected == actual {
 		return nil
 	}

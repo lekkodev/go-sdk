@@ -9,6 +9,14 @@ linters-settings:
       - '^print$'
       - '^println$'
       # - '^fmt\.Print'
+issues:
+  exclude-rules:
+    - path: cmd/example/main.go
+      text: "use of `log.Fatal` forbidden by pattern"
+    - path: cmd/example/main.go
+      text: "use of `log.Fatalf` forbidden by pattern"
+    - path: cmd/example/main.go
+      text: "use of `log.Printf` forbidden by pattern"
 linters:
   enable:
     - asciicheck

@@ -32,10 +32,10 @@ func main() {
 		var err error
 		provider, err = client.NewStaticProvider(*path)
 		if err != nil {
-			log.Fatalf("error when starting in static mode: %v\n", err) // nolint
+			log.Fatalf("error when starting in static mode: %v\n", err)
 		}
 	} else if key == nil {
-		log.Fatal("Lekko API key not provided. Exiting...") // nolint
+		log.Fatal("Lekko API key not provided. Exiting...")
 	} else {
 		provider = client.NewBackendProvider(*key, &client.RepositoryKey{
 			OwnerName: "lekkodev",
@@ -44,5 +44,5 @@ func main() {
 	}
 	cl := client.NewClient("default", provider)
 	flag, err := cl.GetBool(context.TODO(), "example")
-	log.Printf("Retrieving feature flag: %v (err=%v)\n", flag, err) // nolint
+	log.Printf("Retrieving feature flag: %v (err=%v)\n", flag, err)
 }
