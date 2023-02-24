@@ -117,9 +117,9 @@ type apiProvider struct {
 // Should only be called on initialization.
 // This performs an exponential backoff until the context is cancelled.
 func (a *apiProvider) register(ctx context.Context) error {
+	req := connect.NewRequest(&backendv1beta1.RegisterRequest{RepoKey: a.rk.toProto()})
+	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
 	op := func() error {
-		req := connect.NewRequest(&backendv1beta1.RegisterRequest{RepoKey: a.rk.toProto()})
-		req.Header().Set(LekkoAPIKeyHeader, a.apikey)
 		_, err := a.lekkoClient.Register(ctx, req)
 		return err
 	}

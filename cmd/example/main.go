@@ -51,9 +51,7 @@ func main() {
 	}
 	cl, closeF := client.NewClient("default", provider)
 	defer func() {
-		if err := closeF(context.Background()); err != nil {
-			log.Printf("error closing lekko client: %v\n", err) // nolint
-		}
+		_ = closeF(context.Background())
 	}()
 	flag, err := cl.GetBool(context.TODO(), "example")
 	log.Printf("Retrieving feature flag: %v (err=%v)\n", flag, err) // nolint
