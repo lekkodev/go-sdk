@@ -26,8 +26,14 @@ type Client struct {
 	startupContext map[string]interface{}
 }
 
-func NewClient(namespace string, provider Provider) *Client {
-	return &Client{namespace, provider, nil}
+type CloseFunc func(context.Context) error
+
+// A function is returned to close the client. It is also strongly recommended
+// to call this when the program is exiting or the lekko provider is no longer needed.
+func NewClient(namespace string, provider Provider) (*Client, CloseFunc) {
+	return &Client{namespace, provider, nil}, func(ctx context.Context) error {
+		return provider.Close(ctx)
+	}
 }
 
 type ClientOptions struct {

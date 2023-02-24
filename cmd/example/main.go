@@ -18,6 +18,7 @@ import (
 	"context"
 	"flag"
 	"log"
+	"time"
 
 	client "github.com/lekkodev/go-sdk/client"
 )
@@ -37,12 +38,21 @@ func main() {
 	} else if key == nil {
 		log.Fatal("Lekko API key not provided. Exiting...") // nolint
 	} else {
-		provider = client.NewBackendProvider(*key, &client.RepositoryKey{
+		var err error
+		ctx, cancelF := context.WithTimeout(context.Background(), time.Second)
+		defer cancelF()
+		provider, err = client.ConnectAPIProvider(ctx, *key, &client.RepositoryKey{
 			OwnerName: "lekkodev",
 			RepoName:  "template",
 		})
+		if err != nil {
+			log.Fatalf("error when starting in API mode: %v\n", err) // nolint
+		}
 	}
-	cl := client.NewClient("default", provider)
+	cl, closeF := client.NewClient("default", provider)
+	defer func() {
+		_ = closeF(context.Background())
+	}()
 	flag, err := cl.GetBool(context.TODO(), "example")
 	log.Printf("Retrieving feature flag: %v (err=%v)\n", flag, err) // nolint
 }

@@ -28,4 +28,6 @@ type Provider interface {
 	GetStringFeature(ctx context.Context, key string, namespace string) (string, error)
 	GetProtoFeature(ctx context.Context, key string, namespace string, result proto.Message) error
 	GetJSONFeature(ctx context.Context, key string, namespace string, result interface{}) error
+	// Error will get called by the closure returned in Client initialization.
+	Close(ctx context.Context) error
 }

@@ -62,6 +62,9 @@ func (f *staticProvider) eval(ctx context.Context, key string, namespace string)
 	return f.repo.Eval(ctx, namespace, key, fromContext(ctx))
 }
 
+// noop
+func (f *staticProvider) Close(ctx context.Context) error { return nil }
+
 func (f *staticProvider) GetBoolFeature(ctx context.Context, key string, namespace string) (bool, error) {
 	a, ft, err := f.eval(ctx, key, namespace)
 	if err != nil {
