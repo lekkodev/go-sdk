@@ -53,7 +53,7 @@ func NewStaticProvider(pathToRoot string) (Provider, error) {
 }
 
 type staticProvider struct {
-	repo   *repo.Repo
+	repo   repo.ConfigurationRepository
 	rootMD *metadata.RootConfigRepoMetadata
 	nsMDs  map[string]*metadata.NamespaceConfigRepoMetadata
 }
