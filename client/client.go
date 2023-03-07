@@ -21,9 +21,9 @@ import (
 )
 
 // Client allows retrieving lekko features. The appropriate method must
-// be called based on the type of the feature. For instance, calling 
-// GetBool on an Int feature will result in an error. 
-// The interface provides GetXDefault convenience methods that will 
+// be called based on the type of the feature. For instance, calling
+// GetBool on an Int feature will result in an error.
+// The interface provides GetXDefault convenience methods that will
 // log any errors and fall back to the provided default value.
 type Client interface {
 	GetBool(ctx context.Context, key string) (bool, error)
