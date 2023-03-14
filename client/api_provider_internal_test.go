@@ -165,9 +165,7 @@ func TestGetProtoFeature(t *testing.T) {
 	cli = testProvider(&testBackendClient{protoVal: wrapperspb.Int64(59)})
 	badResult := &wrapperspb.BoolValue{Value: true}
 	assert.Error(t, cli.GetProtoFeature(ctx, "test_key", "namespace", badResult))
-	// Testing to see if a default value passed in to GetProtoFeature
-	// remains unchanged if there is a marshalling error. Though
-	// this should not be depended on in the interface.
+	// Note: users should not depend on this
 	assert.True(t, badResult.GetValue())
 }
 
@@ -228,10 +226,8 @@ func TestGetJSONFeatureError(t *testing.T) {
 	result := []string{"foo"}
 	err = cli.GetJSONFeature(ctx, "test_key", "namespace", &result)
 	assert.Error(t, err)
-	// Testing to see if a default value passed in to GetJSONFeature
-	// remains unchanged if there is a marshalling error. Though
-	// this should not be depended on in the interface.
+	// Note: users should not depend on this
 	assert.NotNil(t, result)
-	// Note: result is not []string{"foo", "", ""}. So definitely
+	// Note: result is []string{"foo", "", ""}. So definitely
 	// not something we should depend on.
 }
