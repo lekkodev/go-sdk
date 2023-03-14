@@ -163,8 +163,12 @@ func TestGetProtoFeature(t *testing.T) {
 
 	// type mismatch in proto value
 	cli = testProvider(&testBackendClient{protoVal: wrapperspb.Int64(59)})
-	badResult := &wrapperspb.BoolValue{}
+	badResult := &wrapperspb.BoolValue{Value: true}
 	assert.Error(t, cli.GetProtoFeature(ctx, "test_key", "namespace", badResult))
+	// Testing to see if a default value passed in to GetProtoFeature
+	// remains unchanged if there is a marshalling error. Though
+	// this should not be depended on in the interface.
+	assert.True(t, badResult.GetValue())
 }
 
 func TestUnsupportedContextType(t *testing.T) {
@@ -210,7 +214,24 @@ func TestGetJSONFeatureArr(t *testing.T) {
 	bytes, err := json.Marshal(&ts)
 	require.NoError(t, err)
 	cli := testProvider(&testBackendClient{jsonVal: bytes})
-	result := new([]int)
-	require.NoError(t, cli.GetJSONFeature(ctx, "test_key", "namespace", result))
-	assert.EqualValues(t, &ts, result)
+	result := []int{45}
+	require.NoError(t, cli.GetJSONFeature(ctx, "test_key", "namespace", &result))
+	assert.EqualValues(t, ts, result)
+}
+
+func TestGetJSONFeatureError(t *testing.T) {
+	ctx := context.Background()
+	ts := []int{1, 2, 3}
+	bytes, err := json.Marshal(&ts)
+	require.NoError(t, err)
+	cli := testProvider(&testBackendClient{jsonVal: bytes})
+	result := []string{"foo"}
+	err = cli.GetJSONFeature(ctx, "test_key", "namespace", &result)
+	assert.Error(t, err)
+	// Testing to see if a default value passed in to GetJSONFeature
+	// remains unchanged if there is a marshalling error. Though
+	// this should not be depended on in the interface.
+	assert.NotNil(t, result)
+	// Note: result is not []string{"foo", "", ""}. So definitely
+	// not something we should depend on.
 }
