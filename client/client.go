@@ -20,20 +20,30 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type Client struct {
-	namespace      string
-	provider       Provider
-	startupContext map[string]interface{}
+// Client allows retrieving lekko features. The appropriate method must
+// be called based on the type of the feature. For instance, calling
+// GetBool on an Int feature will result in an error.
+type Client interface {
+	GetBool(ctx context.Context, key string) (bool, error)
+	GetInt(ctx context.Context, key string) (int64, error)
+	GetFloat(ctx context.Context, key string) (float64, error)
+	GetString(ctx context.Context, key string) (string, error)
+	// result should be an empty Go variable that the JSON feature
+	// can be unmarshalled into. If an error is returned, the data
+	// stored in result is unpredictable and should not be relied upon.
+	GetJSON(ctx context.Context, key string, result interface{}) error
+	// result should be an empty proto message that the proto feature
+	// can be unmarshalled into. If an error is returned, the data
+	// stored in result is unpredictable and should not be relied upon.
+	GetProto(ctx context.Context, key string, result proto.Message) error
 }
 
 type CloseFunc func(context.Context) error
 
 // A function is returned to close the client. It is also strongly recommended
 // to call this when the program is exiting or the lekko provider is no longer needed.
-func NewClient(namespace string, provider Provider) (*Client, CloseFunc) {
-	return &Client{namespace, provider, nil}, func(ctx context.Context) error {
-		return provider.Close(ctx)
-	}
+func NewClient(namespace string, provider Provider) (Client, CloseFunc) {
+	return newClient(namespace, provider, nil)
 }
 
 type ClientOptions struct {
@@ -45,35 +55,45 @@ type ClientOptions struct {
 	StartupContext map[string]interface{}
 }
 
-func (o ClientOptions) NewClient(provider Provider) *Client {
-	return &Client{o.Namespace, provider, o.StartupContext}
+func (o ClientOptions) NewClient(provider Provider) (Client, CloseFunc) {
+	return newClient(o.Namespace, provider, o.StartupContext)
 }
 
-func (c *Client) GetBool(ctx context.Context, key string) (bool, error) {
+type client struct {
+	namespace      string
+	provider       Provider
+	startupContext map[string]interface{}
+}
+
+func newClient(namespace string, provider Provider, startupCtx map[string]interface{}) (*client, CloseFunc) {
+	return &client{namespace: namespace, provider: provider, startupContext: startupCtx}, provider.Close
+}
+
+func (c *client) GetBool(ctx context.Context, key string) (bool, error) {
 	return c.provider.GetBoolFeature(c.wrap(ctx), key, c.namespace)
 }
 
-func (c *Client) GetInt(ctx context.Context, key string) (int64, error) {
+func (c *client) GetInt(ctx context.Context, key string) (int64, error) {
 	return c.provider.GetIntFeature(c.wrap(ctx), key, c.namespace)
 }
 
-func (c *Client) GetFloat(ctx context.Context, key string) (float64, error) {
+func (c *client) GetFloat(ctx context.Context, key string) (float64, error) {
 	return c.provider.GetFloatFeature(c.wrap(ctx), key, c.namespace)
 }
 
-func (c *Client) GetString(ctx context.Context, key string) (string, error) {
+func (c *client) GetString(ctx context.Context, key string) (string, error) {
 	return c.provider.GetStringFeature(c.wrap(ctx), key, c.namespace)
 }
 
-func (c *Client) GetProto(ctx context.Context, key string, result proto.Message) error {
+func (c *client) GetProto(ctx context.Context, key string, result proto.Message) error {
 	return c.provider.GetProtoFeature(c.wrap(ctx), key, c.namespace, result)
 }
 
-func (c *Client) GetJSON(ctx context.Context, key string, result interface{}) error {
+func (c *client) GetJSON(ctx context.Context, key string, result interface{}) error {
 	return c.provider.GetJSONFeature(c.wrap(ctx), key, c.namespace, result)
 }
 
-func (c *Client) wrap(ctx context.Context) context.Context {
+func (c *client) wrap(ctx context.Context) context.Context {
 	if c.startupContext == nil {
 		return ctx
 	}
