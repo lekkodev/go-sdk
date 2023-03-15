@@ -76,9 +76,7 @@ func (tc *TestClient) WithError(key string, err error) *TestClient {
 }
 
 // Ensure we conform to the client interface
-func (tc *TestClient) Client() client.Client {
-	return tc
-}
+var _ client.Client = (*TestClient)(nil)
 
 func (tc *TestClient) withValue(key string, value interface{}) *TestClient {
 	tc.values[key] = value
