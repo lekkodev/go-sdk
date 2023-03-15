@@ -165,8 +165,8 @@ func TestGetProtoFeature(t *testing.T) {
 	cli = testProvider(&testBackendClient{protoVal: wrapperspb.Int64(59)})
 	badResult := &wrapperspb.BoolValue{Value: true}
 	assert.Error(t, cli.GetProtoFeature(ctx, "test_key", "namespace", badResult))
-	// Note: users should not depend on this
-	assert.True(t, badResult.GetValue())
+	// Note: the value of badResult is now undefined and api
+	// behavior may change, so it should not be depended on
 }
 
 func TestUnsupportedContextType(t *testing.T) {
@@ -226,8 +226,6 @@ func TestGetJSONFeatureError(t *testing.T) {
 	result := []string{"foo"}
 	err = cli.GetJSONFeature(ctx, "test_key", "namespace", &result)
 	assert.Error(t, err)
-	// Note: users should not depend on this
-	assert.NotNil(t, result)
-	// Note: result is []string{"foo", "", ""}. So definitely
-	// not something we should depend on.
+	// Note: the value of &result is now undefined and api
+	// behavior may change, so it should not be depended on
 }
