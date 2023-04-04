@@ -22,8 +22,8 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/lekkodev/cli/pkg/gen/proto/go-connect/lekko/backend/v1beta1/backendv1beta1connect"
-	backendv1beta1 "github.com/lekkodev/cli/pkg/gen/proto/go/lekko/backend/v1beta1"
+	backendv1beta1connect "buf.build/gen/go/lekkodev/cli/bufbuild/connect-go/lekko/backend/v1beta1/backendv1beta1connect"
+	backendv1beta1 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/backend/v1beta1"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/cenkalti/backoff/v4"

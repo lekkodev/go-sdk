@@ -3,8 +3,8 @@ module github.com/lekkodev/go-sdk
 go 1.19
 
 require (
-	github.com/bufbuild/connect-go v0.3.0
-	github.com/lekkodev/cli v0.2.15-0.20230404212149-3ff604502efd
+	github.com/bufbuild/connect-go v1.6.0
+	github.com/lekkodev/cli v0.2.15-0.20230404224507-e6d9e57d3360
 )
 
 require (
@@ -24,7 +24,7 @@ require (
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/kevinburke/ssh_config v0.0.0-20201106050909-4977a11b4351 // indirect
-	github.com/lekkodev/rules v1.5.2-0.20230404201618-45471f5f1657 // indirect
+	github.com/lekkodev/rules v1.5.2-0.20230404221103-5b5ef75b9fd6 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sergi/go-diff v1.1.0 // indirect
@@ -43,6 +43,8 @@ require (
 )
 
 require (
+	buf.build/gen/go/lekkodev/cli/bufbuild/connect-go v1.6.0-20230404170739-04ec1002972a.1
+	buf.build/gen/go/lekkodev/cli/protocolbuffers/go v1.30.0-20230404170739-04ec1002972a.1
 	github.com/cenkalti/backoff/v4 v4.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.0
