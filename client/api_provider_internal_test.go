@@ -19,8 +19,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	v1beta1 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/backend/v1beta1"
 	"github.com/bufbuild/connect-go"
-	v1beta1 "github.com/lekkodev/cli/pkg/gen/proto/go/lekko/backend/v1beta1"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
