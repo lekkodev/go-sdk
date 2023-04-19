@@ -25,34 +25,26 @@ import (
 
 func main() {
 	key := flag.String("lekko-apikey", "", "API key for lekko given to your organization")
-	path := flag.String("lekko-static-path", "", "Optional bootstrap, if provided, will operate in static mode")
 	flag.Parse()
 
 	var provider client.Provider
-	if path != nil {
-		var err error
-		provider, err = client.NewStaticProvider(*path)
-		if err != nil {
-			log.Fatalf("error when starting in static mode: %v\n", err)
-		}
-	} else if key == nil {
+	if key == nil || *key == "" {
 		log.Fatal("Lekko API key not provided. Exiting...")
-	} else {
-		var err error
-		ctx, cancelF := context.WithTimeout(context.Background(), time.Second)
-		defer cancelF()
-		provider, err = client.ConnectAPIProvider(ctx, *key, &client.RepositoryKey{
-			OwnerName: "lekkodev",
-			RepoName:  "template",
-		})
-		if err != nil {
-			log.Fatalf("error when starting in API mode: %v\n", err)
-		}
+	}
+	var err error
+	ctx, cancelF := context.WithTimeout(context.Background(), time.Second)
+	defer cancelF()
+	provider, err = client.ConnectAPIProvider(ctx, *key, &client.RepositoryKey{
+		OwnerName: "lekkodev",     // update me
+		RepoName:  "newrepoagain", // update me
+	})
+	if err != nil {
+		log.Fatalf("error when starting in API mode: %v\n", err)
 	}
 	cl, closeF := client.NewClient("default", provider)
 	defer func() {
 		_ = closeF(context.Background())
 	}()
-	flag, err := cl.GetBool(context.TODO(), "example")
+	flag, err := cl.GetBool(ctx, "example")
 	log.Printf("Retrieving feature flag: %v (err=%v)\n", flag, err)
 }

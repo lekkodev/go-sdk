@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	backendv1beta1 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/backend/v1beta1"
+	backendv1beta1 "buf.build/gen/go/lekkodev/sdk/protocolbuffers/go/lekko/client/v1beta1"
 )
 
 // TODO: we need a better name that's not 'context'. Conditions? Features? Values?

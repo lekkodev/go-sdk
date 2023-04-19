@@ -22,8 +22,8 @@ import (
 	"net"
 	"net/http"
 
-	backendv1beta1connect "buf.build/gen/go/lekkodev/cli/bufbuild/connect-go/lekko/backend/v1beta1/backendv1beta1connect"
-	backendv1beta1 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/backend/v1beta1"
+	clientv1beta1connect "buf.build/gen/go/lekkodev/sdk/bufbuild/connect-go/lekko/client/v1beta1/clientv1beta1connect"
+	clientv1beta1 "buf.build/gen/go/lekkodev/sdk/protocolbuffers/go/lekko/client/v1beta1"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/cenkalti/backoff/v4"
@@ -33,7 +33,7 @@ import (
 )
 
 const (
-	LekkoURL          = "https://prod.api.lekko.dev"
+	LekkoURL          = "https://prod.api.lekko.dev:443"
 	LekkoAPIKeyHeader = "apikey"
 	defaultSidecarURL = "https://localhost:50051"
 )
@@ -47,7 +47,7 @@ func ConnectAPIProvider(ctx context.Context, apiKey string, rk *RepositoryKey) (
 	}
 	provider := &apiProvider{
 		apikey:      apiKey,
-		lekkoClient: backendv1beta1connect.NewConfigurationServiceClient(http.DefaultClient, LekkoURL),
+		lekkoClient: clientv1beta1connect.NewConfigurationServiceClient(http.DefaultClient, LekkoURL),
 		rk:          rk,
 	}
 	if err := provider.register(ctx); err != nil {
@@ -73,7 +73,7 @@ func ConnectSidecarProvider(ctx context.Context, url, apiKey string, rk *Reposit
 	// TODO: make use of tls config once the sidecar supports tls.
 	provider := &apiProvider{
 		apikey: apiKey,
-		lekkoClient: backendv1beta1connect.NewConfigurationServiceClient(&http.Client{
+		lekkoClient: clientv1beta1connect.NewConfigurationServiceClient(&http.Client{
 			Transport: &http2.Transport{
 				AllowHTTP: true,
 				DialTLS: func(network, addr string, _ *tls.Config) (net.Conn, error) {
@@ -98,11 +98,11 @@ type RepositoryKey struct {
 	RepoName string
 }
 
-func (rk *RepositoryKey) toProto() *backendv1beta1.RepositoryKey {
+func (rk *RepositoryKey) toProto() *clientv1beta1.RepositoryKey {
 	if rk == nil {
 		return nil
 	}
-	return &backendv1beta1.RepositoryKey{
+	return &clientv1beta1.RepositoryKey{
 		OwnerName: rk.OwnerName,
 		RepoName:  rk.RepoName,
 	}
@@ -110,14 +110,14 @@ func (rk *RepositoryKey) toProto() *backendv1beta1.RepositoryKey {
 
 type apiProvider struct {
 	apikey      string
-	lekkoClient backendv1beta1connect.ConfigurationServiceClient
+	lekkoClient clientv1beta1connect.ConfigurationServiceClient
 	rk          *RepositoryKey
 }
 
 // Should only be called on initialization.
 // This performs an exponential backoff until the context is cancelled.
 func (a *apiProvider) register(ctx context.Context) error {
-	req := connect.NewRequest(&backendv1beta1.RegisterRequest{RepoKey: a.rk.toProto()})
+	req := connect.NewRequest(&clientv1beta1.RegisterRequest{RepoKey: a.rk.toProto()})
 	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
 	op := func() error {
 		_, err := a.lekkoClient.Register(ctx, req)
@@ -127,7 +127,7 @@ func (a *apiProvider) register(ctx context.Context) error {
 }
 
 func (a *apiProvider) Close(ctx context.Context) error {
-	req := connect.NewRequest(&backendv1beta1.DeregisterRequest{})
+	req := connect.NewRequest(&clientv1beta1.DeregisterRequest{})
 	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
 	_, err := a.lekkoClient.Deregister(ctx, req)
 	return err
@@ -138,7 +138,7 @@ func (a *apiProvider) GetBoolFeature(ctx context.Context, key string, namespace 
 	if err != nil {
 		return false, errors.Wrap(err, "error transforming context")
 	}
-	req := connect.NewRequest(&backendv1beta1.GetBoolValueRequest{
+	req := connect.NewRequest(&clientv1beta1.GetBoolValueRequest{
 		Key:       key,
 		Namespace: namespace,
 		Context:   lc,
@@ -157,7 +157,7 @@ func (a *apiProvider) GetIntFeature(ctx context.Context, key string, namespace s
 	if err != nil {
 		return 0, errors.Wrap(err, "error transforming context")
 	}
-	req := connect.NewRequest(&backendv1beta1.GetIntValueRequest{
+	req := connect.NewRequest(&clientv1beta1.GetIntValueRequest{
 		Key:       key,
 		Namespace: namespace,
 		Context:   lc,
@@ -176,7 +176,7 @@ func (a *apiProvider) GetFloatFeature(ctx context.Context, key string, namespace
 	if err != nil {
 		return 0, errors.Wrap(err, "error transforming context")
 	}
-	req := connect.NewRequest(&backendv1beta1.GetFloatValueRequest{
+	req := connect.NewRequest(&clientv1beta1.GetFloatValueRequest{
 		Key:       key,
 		Namespace: namespace,
 		Context:   lc,
@@ -195,7 +195,7 @@ func (a *apiProvider) GetStringFeature(ctx context.Context, key string, namespac
 	if err != nil {
 		return "", errors.Wrap(err, "error transforming context")
 	}
-	req := connect.NewRequest(&backendv1beta1.GetStringValueRequest{
+	req := connect.NewRequest(&clientv1beta1.GetStringValueRequest{
 		Key:       key,
 		Namespace: namespace,
 		Context:   lc,
@@ -214,7 +214,7 @@ func (a *apiProvider) GetProtoFeature(ctx context.Context, key string, namespace
 	if err != nil {
 		return errors.Wrap(err, "error transforming context")
 	}
-	req := connect.NewRequest(&backendv1beta1.GetProtoValueRequest{
+	req := connect.NewRequest(&clientv1beta1.GetProtoValueRequest{
 		Key:       key,
 		Namespace: namespace,
 		Context:   lc,
@@ -233,7 +233,7 @@ func (a *apiProvider) GetJSONFeature(ctx context.Context, key string, namespace 
 	if err != nil {
 		return errors.Wrap(err, "error transforming context")
 	}
-	req := connect.NewRequest(&backendv1beta1.GetJSONValueRequest{
+	req := connect.NewRequest(&clientv1beta1.GetJSONValueRequest{
 		Key:       key,
 		Namespace: namespace,
 		Context:   lc,
