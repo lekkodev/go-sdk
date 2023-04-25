@@ -39,8 +39,6 @@ const (
 )
 
 // Fetches configuration directly from Lekko Backend APIs.
-// This also make repeated RPCs to register the client, so providing a context with a timeout
-// is strongly recommended.
 func ConnectAPIProvider(ctx context.Context, apiKey string, rk *RepositoryKey) (Provider, error) {
 	if rk == nil {
 		return nil, fmt.Errorf("no repository key provided")
@@ -83,7 +81,7 @@ func ConnectSidecarProvider(ctx context.Context, url, apiKey string, rk *Reposit
 		}, url, connect.WithGRPC()),
 		rk: rk,
 	}
-	if err := provider.register(ctx); err != nil {
+	if err := provider.registerWithBackoff(ctx); err != nil {
 		return nil, err
 	}
 	return provider, nil
@@ -114,16 +112,42 @@ type apiProvider struct {
 	rk          *RepositoryKey
 }
 
-// Should only be called on initialization.
 // This performs an exponential backoff until the context is cancelled.
-func (a *apiProvider) register(ctx context.Context) error {
+// We do this to try to alleviate some issues with sidecars starting up.
+func (a *apiProvider) registerWithBackoff(ctx context.Context) error {
 	req := connect.NewRequest(&clientv1beta1.RegisterRequest{RepoKey: a.rk.toProto()})
 	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
+	ticker := backoff.NewTicker(backoff.NewExponentialBackOff())
 	op := func() error {
 		_, err := a.lekkoClient.Register(ctx, req)
 		return err
 	}
-	return backoff.Retry(op, backoff.WithContext(backoff.NewExponentialBackOff(), ctx))
+	var err error
+	for {
+		newErr := op()
+		if newErr == nil {
+			return nil
+		}
+		// keep track of errors to return if we time out
+		if err != nil {
+			err = errors.Wrap(newErr, err.Error())
+		} else {
+			err = newErr
+		}
+		select {
+		case <-ctx.Done():
+			return errors.Wrap(err, "timed out retrying, returning last error")
+		case <-ticker.C:
+		}
+	}
+}
+
+// Should only be called on initialization.
+func (a *apiProvider) register(ctx context.Context) error {
+	req := connect.NewRequest(&clientv1beta1.RegisterRequest{RepoKey: a.rk.toProto()})
+	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
+	_, err := a.lekkoClient.Register(ctx, req)
+	return err
 }
 
 func (a *apiProvider) Close(ctx context.Context) error {
