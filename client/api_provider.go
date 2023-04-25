@@ -122,12 +122,18 @@ func (a *apiProvider) registerWithBackoff(ctx context.Context) error {
 		_, err := a.lekkoClient.Register(ctx, req)
 		return err
 	}
+	var err error
 	for {
-		var err error
-		if err = op(); err == nil {
+		newErr := op()
+		if newErr == nil {
 			return nil
 		}
-		// else, we have an error, but we keep it around to retry.
+		// keep track of errors to return if we time out
+		if err != nil {
+			err = errors.Wrap(newErr, err.Error())
+		} else {
+			err = newErr
+		}
 		select {
 		case <-ctx.Done():
 			return errors.Wrap(err, "timed out retrying, returning last error")
