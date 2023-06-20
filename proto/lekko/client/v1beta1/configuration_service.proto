@@ -93,7 +93,7 @@ message GetProtoValueRequest {
 
 message GetProtoValueResponse {
   google.protobuf.Any value = 1;
-  Any value_new = 2;
+  Any value_v2 = 2;
 }
 
 message Any {
