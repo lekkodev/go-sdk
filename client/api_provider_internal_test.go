@@ -30,13 +30,14 @@ import (
 )
 
 type testBackendClient struct {
-	boolVal   bool
-	intVal    int64
-	floatVal  float64
-	stringVal string
-	protoVal  proto.Message
-	jsonVal   []byte
-	err       error
+	boolVal    bool
+	intVal     int64
+	floatVal   float64
+	stringVal  string
+	protoVal   proto.Message
+	protoValV2 proto.Message
+	jsonVal    []byte
+	err        error
 }
 
 func (tbc *testBackendClient) GetBoolValue(ctx context.Context, req *connect.Request[v1beta1.GetBoolValueRequest]) (*connect.Response[v1beta1.GetBoolValueResponse], error) {
@@ -64,13 +65,28 @@ func (tbc *testBackendClient) GetStringValue(ctx context.Context, req *connect.R
 }
 
 func (tbc *testBackendClient) GetProtoValue(context.Context, *connect.Request[v1beta1.GetProtoValueRequest]) (*connect.Response[v1beta1.GetProtoValueResponse], error) {
-	anyVal, err := anypb.New(tbc.protoVal)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal anyval")
+	if tbc.protoVal != nil {
+		anyVal, err := anypb.New(tbc.protoVal)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to marshal anyval")
+		}
+		return connect.NewResponse(&v1beta1.GetProtoValueResponse{
+			Value: anyVal,
+		}), tbc.err
 	}
-	return connect.NewResponse(&v1beta1.GetProtoValueResponse{
-		Value: anyVal,
-	}), tbc.err
+	if tbc.protoValV2 != nil {
+		anyVal, err := anypb.New(tbc.protoValV2)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to marshal anyval")
+		}
+		return connect.NewResponse(&v1beta1.GetProtoValueResponse{
+			ValueV2: &v1beta1.Any{
+				TypeUrl: anyVal.GetTypeUrl(),
+				Value:   anyVal.GetValue(),
+			},
+		}), tbc.err
+	}
+	return nil, tbc.err
 }
 
 func (tbc *testBackendClient) GetJSONValue(context.Context, *connect.Request[v1beta1.GetJSONValueRequest]) (*connect.Response[v1beta1.GetJSONValueResponse], error) {
@@ -150,23 +166,35 @@ func TestGetStringFeature(t *testing.T) {
 }
 
 func TestGetProtoFeature(t *testing.T) {
-	// success
-	ctx := context.Background()
-	cli := testProvider(&testBackendClient{protoVal: wrapperspb.Int64(59)})
-	result := &wrapperspb.Int64Value{}
-	require.NoError(t, cli.GetProtoFeature(ctx, "test_key", "namespace", result))
-	assert.EqualValues(t, int64(59), result.Value)
+	protoProvider := func(version string, p proto.Message, err error) Provider {
+		if version == "v1" {
+			return testProvider(&testBackendClient{protoVal: p, err: err})
+		}
+		return testProvider(&testBackendClient{protoValV2: p, err: err})
+	}
+	// test that get proto works for both versions of the 'any'
+	// that is returned via the api.
+	for _, version := range []string{"v1", "v2"} {
+		t.Run(version, func(t *testing.T) {
+			// success
+			ctx := context.Background()
+			cli := protoProvider(version, wrapperspb.Int64(59), nil)
+			result := &wrapperspb.Int64Value{}
+			require.NoError(t, cli.GetProtoFeature(ctx, "test_key", "namespace", result))
+			assert.EqualValues(t, int64(59), result.Value)
 
-	// test passing up backend error
-	cli = testProvider(&testBackendClient{protoVal: wrapperspb.Int64(59), err: errors.New("error")})
-	assert.Error(t, cli.GetProtoFeature(ctx, "test_key", "namespace", result))
+			// test passing up backend error
+			cli = protoProvider(version, wrapperspb.Int64(59), errors.New("error"))
+			assert.Error(t, cli.GetProtoFeature(ctx, "test_key", "namespace", result))
 
-	// type mismatch in proto value
-	cli = testProvider(&testBackendClient{protoVal: wrapperspb.Int64(59)})
-	badResult := &wrapperspb.BoolValue{Value: true}
-	assert.Error(t, cli.GetProtoFeature(ctx, "test_key", "namespace", badResult))
-	// Note: the value of badResult is now undefined and api
-	// behavior may change, so it should not be depended on
+			// type mismatch in proto value
+			cli = protoProvider(version, wrapperspb.Int64(59), nil)
+			badResult := &wrapperspb.BoolValue{Value: true}
+			assert.Error(t, cli.GetProtoFeature(ctx, "test_key", "namespace", badResult))
+			// Note: the value of badResult is now undefined and api
+			// behavior may change, so it should not be depended on
+		})
+	}
 }
 
 func TestUnsupportedContextType(t *testing.T) {

@@ -2,7 +2,7 @@ module github.com/lekkodev/go-sdk
 
 go 1.19
 
-require github.com/bufbuild/connect-go v1.6.0
+require github.com/bufbuild/connect-go v1.8.0
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -14,8 +14,8 @@ require (
 )
 
 require (
-	buf.build/gen/go/lekkodev/sdk/bufbuild/connect-go v1.6.0-20230419180142-0694c10ef23c.1
-	buf.build/gen/go/lekkodev/sdk/protocolbuffers/go v1.30.0-20230419180142-0694c10ef23c.1
+	buf.build/gen/go/lekkodev/sdk/bufbuild/connect-go v1.8.0-20230620172853-31a82baf7ccf.1
+	buf.build/gen/go/lekkodev/sdk/protocolbuffers/go v1.30.0-20230620172853-31a82baf7ccf.1
 	github.com/cenkalti/backoff/v4 v4.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.0

@@ -30,6 +30,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/net/http2"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 const (
@@ -248,6 +249,13 @@ func (a *apiProvider) GetProtoFeature(ctx context.Context, key string, namespace
 	resp, err := a.lekkoClient.GetProtoValue(ctx, req)
 	if err != nil {
 		return errors.Wrap(err, "error hitting lekko backend")
+	}
+	if resp.Msg.GetValueV2() != nil {
+		a := &anypb.Any{
+			TypeUrl: resp.Msg.ValueV2.GetTypeUrl(),
+			Value:   resp.Msg.ValueV2.GetValue(),
+		}
+		return a.UnmarshalTo(result)
 	}
 	return resp.Msg.GetValue().UnmarshalTo(result)
 }
