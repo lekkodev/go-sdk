@@ -34,20 +34,23 @@ import (
 )
 
 const (
-	LekkoURL          = "https://prod.api.lekko.dev:443"
-	LekkoAPIKeyHeader = "apikey"
+	defaultAPIURL     = "https://prod.api.lekko.dev:443"
 	defaultSidecarURL = "https://localhost:50051"
+	lekkoAPIKeyHeader = "apikey"
 )
 
 // Fetches configuration directly from Lekko Backend APIs.
-func ConnectAPIProvider(ctx context.Context, apiKey string, rk *RepositoryKey) (Provider, error) {
+func ConnectAPIProvider(ctx context.Context, apiKey string, rk *RepositoryKey, opts ...ProviderOption) (Provider, error) {
 	if rk == nil {
 		return nil, fmt.Errorf("no repository key provided")
 	}
 	provider := &apiProvider{
 		apikey:      apiKey,
-		lekkoClient: clientv1beta1connect.NewConfigurationServiceClient(http.DefaultClient, LekkoURL),
+		lekkoClient: clientv1beta1connect.NewConfigurationServiceClient(http.DefaultClient, defaultAPIURL),
 		rk:          rk,
+	}
+	for _, opt := range opts {
+		opt.apply(provider)
 	}
 	if err := provider.register(ctx); err != nil {
 		return nil, err
@@ -59,7 +62,7 @@ func ConnectAPIProvider(ctx context.Context, apiKey string, rk *RepositoryKey) (
 // Will make repeated RPCs to register the client, so providing context with a timeout is
 // strongly preferred. A function is returned to close the client. It is also strongly recommended
 // to call this when the program is exiting or the lekko provider is no longer needed.
-func ConnectSidecarProvider(ctx context.Context, url, apiKey string, rk *RepositoryKey) (Provider, error) {
+func ConnectSidecarProvider(ctx context.Context, url string, rk *RepositoryKey, opts ...ProviderOption) (Provider, error) {
 	if rk == nil {
 		return nil, fmt.Errorf("no repository key provided")
 	}
@@ -71,7 +74,6 @@ func ConnectSidecarProvider(ctx context.Context, url, apiKey string, rk *Reposit
 	// e.g. grpc instead of raw http.
 	// TODO: make use of tls config once the sidecar supports tls.
 	provider := &apiProvider{
-		apikey: apiKey,
 		lekkoClient: clientv1beta1connect.NewConfigurationServiceClient(&http.Client{
 			Transport: &http2.Transport{
 				AllowHTTP: true,
@@ -81,6 +83,9 @@ func ConnectSidecarProvider(ctx context.Context, url, apiKey string, rk *Reposit
 			},
 		}, url, connect.WithGRPC()),
 		rk: rk,
+	}
+	for _, opt := range opts {
+		opt.apply(provider)
 	}
 	if err := provider.registerWithBackoff(ctx); err != nil {
 		return nil, err
@@ -117,7 +122,7 @@ type apiProvider struct {
 // We do this to try to alleviate some issues with sidecars starting up.
 func (a *apiProvider) registerWithBackoff(ctx context.Context) error {
 	req := connect.NewRequest(&clientv1beta1.RegisterRequest{RepoKey: a.rk.toProto()})
-	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
+	req.Header().Set(lekkoAPIKeyHeader, a.apikey)
 	ticker := backoff.NewTicker(backoff.NewExponentialBackOff())
 	op := func() error {
 		_, err := a.lekkoClient.Register(ctx, req)
@@ -146,14 +151,14 @@ func (a *apiProvider) registerWithBackoff(ctx context.Context) error {
 // Should only be called on initialization.
 func (a *apiProvider) register(ctx context.Context) error {
 	req := connect.NewRequest(&clientv1beta1.RegisterRequest{RepoKey: a.rk.toProto()})
-	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
+	req.Header().Set(lekkoAPIKeyHeader, a.apikey)
 	_, err := a.lekkoClient.Register(ctx, req)
 	return err
 }
 
 func (a *apiProvider) Close(ctx context.Context) error {
 	req := connect.NewRequest(&clientv1beta1.DeregisterRequest{})
-	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
+	req.Header().Set(lekkoAPIKeyHeader, a.apikey)
 	_, err := a.lekkoClient.Deregister(ctx, req)
 	return err
 }
@@ -169,7 +174,7 @@ func (a *apiProvider) GetBoolFeature(ctx context.Context, key string, namespace 
 		Context:   lc,
 		RepoKey:   a.rk.toProto(),
 	})
-	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
+	req.Header().Set(lekkoAPIKeyHeader, a.apikey)
 	resp, err := a.lekkoClient.GetBoolValue(ctx, req)
 	if err != nil {
 		return false, errors.Wrap(err, "error hitting lekko backend")
@@ -188,7 +193,7 @@ func (a *apiProvider) GetIntFeature(ctx context.Context, key string, namespace s
 		Context:   lc,
 		RepoKey:   a.rk.toProto(),
 	})
-	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
+	req.Header().Set(lekkoAPIKeyHeader, a.apikey)
 	resp, err := a.lekkoClient.GetIntValue(ctx, req)
 	if err != nil {
 		return 0, errors.Wrap(err, "error hitting lekko backend")
@@ -207,7 +212,7 @@ func (a *apiProvider) GetFloatFeature(ctx context.Context, key string, namespace
 		Context:   lc,
 		RepoKey:   a.rk.toProto(),
 	})
-	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
+	req.Header().Set(lekkoAPIKeyHeader, a.apikey)
 	resp, err := a.lekkoClient.GetFloatValue(ctx, req)
 	if err != nil {
 		return 0, errors.Wrap(err, "error hitting lekko backend")
@@ -226,7 +231,7 @@ func (a *apiProvider) GetStringFeature(ctx context.Context, key string, namespac
 		Context:   lc,
 		RepoKey:   a.rk.toProto(),
 	})
-	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
+	req.Header().Set(lekkoAPIKeyHeader, a.apikey)
 	resp, err := a.lekkoClient.GetStringValue(ctx, req)
 	if err != nil {
 		return "", errors.Wrap(err, "error hitting lekko backend")
@@ -245,7 +250,7 @@ func (a *apiProvider) GetProtoFeature(ctx context.Context, key string, namespace
 		Context:   lc,
 		RepoKey:   a.rk.toProto(),
 	})
-	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
+	req.Header().Set(lekkoAPIKeyHeader, a.apikey)
 	resp, err := a.lekkoClient.GetProtoValue(ctx, req)
 	if err != nil {
 		return errors.Wrap(err, "error hitting lekko backend")
@@ -271,7 +276,7 @@ func (a *apiProvider) GetJSONFeature(ctx context.Context, key string, namespace 
 		Context:   lc,
 		RepoKey:   a.rk.toProto(),
 	})
-	req.Header().Set(LekkoAPIKeyHeader, a.apikey)
+	req.Header().Set(lekkoAPIKeyHeader, a.apikey)
 	resp, err := a.lekkoClient.GetJSONValue(ctx, req)
 	if err != nil {
 		return errors.Wrap(err, "error hitting lekko backend")
@@ -280,4 +285,18 @@ func (a *apiProvider) GetJSONFeature(ctx context.Context, key string, namespace 
 		return errors.Wrap(err, fmt.Sprintf("failed to unmarshal json into go type %T", result))
 	}
 	return nil
+}
+
+type ProviderOption interface {
+	apply(provider *apiProvider)
+}
+
+// Used to override the default Lekko backend API URL.
+// Only applicable to API provider.
+type URLOption struct {
+	URL string
+}
+
+func (uo *URLOption) apply(provider *apiProvider) {
+	provider.lekkoClient = clientv1beta1connect.NewConfigurationServiceClient(http.DefaultClient, uo.URL)
 }
