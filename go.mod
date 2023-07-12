@@ -1,6 +1,6 @@
 module github.com/lekkodev/go-sdk
 
-go 1.19
+go 1.20
 
 require github.com/bufbuild/connect-go v1.8.0
 

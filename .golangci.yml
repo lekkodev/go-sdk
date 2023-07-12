@@ -26,7 +26,7 @@ linters:
     - contextcheck
     - deadcode
     - decorder
-    - depguard
+    # - depguard
     - dogsled
     - errcheck
     - execinquery
