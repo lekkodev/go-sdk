@@ -30,7 +30,9 @@ var (
 )
 
 func newStore() *store {
-	return &store{}
+	return &store{
+		configs: make(map[configKey]configData),
+	}
 }
 
 type configKey struct {

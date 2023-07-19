@@ -41,9 +41,13 @@ type Store interface {
 
 // Constructs an in-memory store that fetches configs from lekko's backend.
 func NewBackendStore(ctx context.Context, apikey, url, ownerName, repoName string, updateInterval time.Duration) (Store, error) {
+	return newBackendStore(ctx, apikey, ownerName, repoName, updateInterval, backendv1beta1connect.NewDistributionServiceClient(http.DefaultClient, url))
+}
+
+func newBackendStore(ctx context.Context, apikey, ownerName, repoName string, updateInterval time.Duration, distClient backendv1beta1connect.DistributionServiceClient) (*backendStore, error) {
 	ctx, cancel := context.WithCancel(ctx)
-	b := &BackendStore{
-		distClient: backendv1beta1connect.NewDistributionServiceClient(http.DefaultClient, url),
+	b := &backendStore{
+		distClient: distClient,
 		store:      newStore(),
 		repoKey: &backendv1beta1.RepositoryKey{
 			OwnerName: ownerName,
@@ -53,17 +57,20 @@ func NewBackendStore(ctx context.Context, apikey, url, ownerName, repoName strin
 		updateInterval: updateInterval,
 		cancel:         cancel,
 	}
+	// register with lekko backend
 	if err := b.registerWithBackoff(ctx); err != nil {
 		return nil, errors.Wrap(err, "error registering client")
 	}
+	// initialize the store once with configs
 	if _, err := b.updateStoreWithBackoff(ctx); err != nil {
 		return nil, err
 	}
+	// kick off an asynchronous goroutine that updates the store periodically
 	b.loop(ctx)
 	return b, nil
 }
 
-type BackendStore struct {
+type backendStore struct {
 	distClient         backendv1beta1connect.DistributionServiceClient
 	store              *store
 	repoKey            *backendv1beta1.RepositoryKey
@@ -74,7 +81,7 @@ type BackendStore struct {
 }
 
 // Close implements Store.
-func (b *BackendStore) Close(ctx context.Context) error {
+func (b *backendStore) Close(ctx context.Context) error {
 	// cancel any ongoing background loops
 	b.cancel()
 	// wait for background work to complete
@@ -86,11 +93,11 @@ func (b *BackendStore) Close(ctx context.Context) error {
 }
 
 // Evaluate implements Store.
-func (b *BackendStore) Evaluate(key string, namespace string, lc map[string]interface{}, dest protoreflect.ProtoMessage) error {
+func (b *backendStore) Evaluate(key string, namespace string, lc map[string]interface{}, dest protoreflect.ProtoMessage) error {
 	return b.store.evaluateType(key, namespace, lc, dest)
 }
 
-func (b *BackendStore) registerWithBackoff(ctx context.Context) error {
+func (b *backendStore) registerWithBackoff(ctx context.Context) error {
 	req := connect.NewRequest(&backendv1beta1.RegisterClientRequest{
 		RepoKey:       b.repoKey,
 		NamespaceList: []string{}, // register all namespaces
@@ -104,7 +111,7 @@ func (b *BackendStore) registerWithBackoff(ctx context.Context) error {
 	}
 
 	exp := backoff.NewExponentialBackOff()
-	exp.MaxElapsedTime = 10 * time.Second
+	exp.MaxElapsedTime = 5 * time.Second
 	if err := backoff.Retry(op, exp); err != nil {
 		return err
 	}
@@ -114,7 +121,7 @@ func (b *BackendStore) registerWithBackoff(ctx context.Context) error {
 	return nil
 }
 
-func (b *BackendStore) updateStoreWithBackoff(ctx context.Context) (bool, error) {
+func (b *backendStore) updateStoreWithBackoff(ctx context.Context) (bool, error) {
 	req := connect.NewRequest(&backendv1beta1.GetRepositoryContentsRequest{
 		RepoKey:    b.repoKey,
 		SessionKey: b.sessionKey,
@@ -138,7 +145,7 @@ func (b *BackendStore) updateStoreWithBackoff(ctx context.Context) (bool, error)
 	return updated, nil
 }
 
-func (b *BackendStore) shouldUpdateStore(ctx context.Context) (bool, error) {
+func (b *backendStore) shouldUpdateStore(ctx context.Context) (bool, error) {
 	req := connect.NewRequest(&backendv1beta1.GetRepositoryVersionRequest{
 		RepoKey:    b.repoKey,
 		SessionKey: b.sessionKey,
@@ -152,7 +159,7 @@ func (b *BackendStore) shouldUpdateStore(ctx context.Context) (bool, error) {
 	return should, nil
 }
 
-func (b *BackendStore) loop(ctx context.Context) {
+func (b *backendStore) loop(ctx context.Context) {
 	b.wg.Add(1)
 	go func() {
 		defer b.wg.Done()
