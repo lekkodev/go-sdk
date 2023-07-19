@@ -1,6 +1,6 @@
 GO_BINS := $(GO_BINS) cmd/example
 DOCKER_BINS := $(DOCKER_BINS) example
-GO_ALL_REPO_PKGS := $(GO_ALL_REPO_PKGS) ./client
+GO_ALL_REPO_PKGS := $(GO_ALL_REPO_PKGS) ./client/... ./pkg/...
 GOPRIVATE := $(GOPRIVATE),github.com/lekkodev/*
 # DOCKER_BUILD_EXTRA_FLAGS := --platform=linux/amd64
 
