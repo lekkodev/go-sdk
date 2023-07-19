@@ -21,7 +21,7 @@ import (
 
 	featurev1beta1 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/feature/v1beta1"
 	rulesv1beta3 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/rules/v1beta3"
-	"github.com/lekkodev/go-sdk/pkg/eval/rules"
+	"github.com/lekkodev/go-sdk/pkg/rules"
 	"github.com/pkg/errors"
 )
 
