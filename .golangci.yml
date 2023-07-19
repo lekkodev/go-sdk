@@ -17,6 +17,8 @@ issues:
       text: "use of `log.Fatalf` forbidden by pattern"
     - path: cmd/example/main.go
       text: "use of `log.Printf` forbidden by pattern"
+    - path: internal/memory/backend.go
+      text: "use of `log.Printf` forbidden by pattern"
 linters:
   enable:
     - asciicheck

@@ -21,30 +21,61 @@ import (
 	"time"
 
 	client "github.com/lekkodev/go-sdk/client"
+	"github.com/pkg/errors"
 )
 
 func main() {
-	key := flag.String("lekko-apikey", "", "API key for lekko given to your organization")
+	var key, mode, namespace, config string
+	flag.StringVar(&key, "lekko-apikey", "", "API key for lekko given to your organization")
+	flag.StringVar(&mode, "mode", "api", "Mode to start the sdk in (api, in-memory, local)")
+	flag.StringVar(&namespace, "namespace", "default", "namespace to request the config from")
+	flag.StringVar(&config, "config", "hello", "name of the config to request")
 	flag.Parse()
 
 	var provider client.Provider
-	if key == nil || *key == "" {
+	if key == "" {
 		log.Fatal("Lekko API key not provided. Exiting...")
 	}
 	var err error
-	ctx, cancelF := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancelF := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelF()
-	provider, err = client.ConnectAPIProvider(ctx, *key, &client.RepositoryKey{
-		OwnerName: "lekkodev",     // update me
-		RepoName:  "newrepoagain", // update me
-	})
+	provider, err = getProvider(ctx, key, mode)
 	if err != nil {
-		log.Fatalf("error when starting in API mode: %v\n", err)
+		log.Fatalf("error when starting in %s mode: %v\n", mode, err)
 	}
-	cl, closeF := client.NewClient("default", provider)
+
+	cl, closeF := client.NewClient(namespace, provider)
 	defer func() {
 		_ = closeF(context.Background())
 	}()
-	flag, err := cl.GetBool(ctx, "example")
-	log.Printf("Retrieving feature flag: %v (err=%v)\n", flag, err)
+	result, err := cl.GetString(ctx, config)
+	if err != nil {
+		log.Fatalf("error retrieving config: %v\n", err)
+	}
+	log.Printf("%s/%s [%T]: %v\n", namespace, config, result, result)
+}
+
+func getProvider(ctx context.Context, key, mode string) (client.Provider, error) {
+	rk := &client.RepositoryKey{
+		OwnerName: "lekkodev", // update me
+		RepoName:  "example",  // update me
+	}
+	var provider client.Provider
+	var err error
+	switch mode {
+	case "api":
+		provider, err = client.ConnectAPIProvider(ctx, key, rk)
+	case "in-memory":
+		provider, err = client.BackendInMemoryProvider(ctx, &client.InMemoryProviderOptions{
+			APIKey:         key,
+			RepositoryKey:  *rk,
+			UpdateInterval: 10 * time.Second,
+		})
+	default:
+		err = errors.Errorf("unknown mode %s", mode)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return provider, nil
 }
