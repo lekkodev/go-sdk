@@ -164,6 +164,7 @@ func (b *backendStore) loop(ctx context.Context) {
 	go func() {
 		defer b.wg.Done()
 		tick := time.NewTicker(b.updateInterval)
+		defer tick.Stop()
 		for {
 			select {
 			case <-ctx.Done():
