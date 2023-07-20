@@ -16,6 +16,7 @@ package memory
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -61,7 +62,7 @@ func TestBackendStore(t *testing.T) {
 		contents:   repositoryContents(),
 	}
 	ctx := context.Background()
-	b, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds)
+	b, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, 6)
 	require.NoError(t, err, "no error during register and init")
 
 	bv := &wrapperspb.BoolValue{}
@@ -85,7 +86,10 @@ func TestBackendStore(t *testing.T) {
 	require.NoError(t, b.Evaluate("proto", "ns-1", nil, pv))
 	assert.Equal(t, int32(58), pv.Value)
 
-	require.NoError(t, b.Close(ctx), "no error during close")
+	err = b.Close(ctx)
+	require.NoError(t, err, "no error during close")
+	events := tds.getEventsReceived()
+	require.Equal(t, 6, len(events), "expecting 6 events, got %d: %v", len(events), events)
 }
 
 func TestBackendStoreRegisterError(t *testing.T) {
@@ -95,7 +99,7 @@ func TestBackendStoreRegisterError(t *testing.T) {
 		registerErr: backoff.Permanent(errors.New("registration failed")),
 	}
 	ctx := context.Background()
-	_, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds)
+	_, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, eventsBatchSize)
 	require.Error(t, err)
 }
 
@@ -106,7 +110,7 @@ func TestBackendStoreDeregisterError(t *testing.T) {
 		deregisterErr: errors.New("deregistration failed"),
 	}
 	ctx := context.Background()
-	b, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds)
+	b, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, eventsBatchSize)
 	require.NoError(t, err)
 
 	require.Error(t, b.Close(ctx))
@@ -119,14 +123,16 @@ func TestBackendStoreGetContentsError(t *testing.T) {
 		getContentsErr: backoff.Permanent(errors.New("get contents failed")),
 	}
 	ctx := context.Background()
-	_, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds)
+	_, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, eventsBatchSize)
 	require.Error(t, err)
 }
 
 type testDistService struct {
+	sync.RWMutex
 	sessionKey                                                string
 	registerErr, deregisterErr, getContentsErr, getVersionErr error
 	contents                                                  *backendv1beta1.GetRepositoryContentsResponse
+	events                                                    []*backendv1beta1.FlagEvaluationEvent
 }
 
 func (tds *testDistService) DeregisterClient(context.Context, *connect.Request[backendv1beta1.DeregisterClientRequest]) (*connect.Response[backendv1beta1.DeregisterClientResponse], error) {
@@ -153,6 +159,15 @@ func (tds *testDistService) RegisterClient(context.Context, *connect.Request[bac
 	}), tds.registerErr
 }
 
-func (*testDistService) SendFlagEvaluationMetrics(context.Context, *connect.Request[backendv1beta1.SendFlagEvaluationMetricsRequest]) (*connect.Response[backendv1beta1.SendFlagEvaluationMetricsResponse], error) {
-	panic("unimplemented")
+func (tds *testDistService) SendFlagEvaluationMetrics(ctx context.Context, req *connect.Request[backendv1beta1.SendFlagEvaluationMetricsRequest]) (*connect.Response[backendv1beta1.SendFlagEvaluationMetricsResponse], error) {
+	tds.Lock()
+	defer tds.Unlock()
+	tds.events = append(tds.events, req.Msg.GetEvents()...)
+	return connect.NewResponse(&backendv1beta1.SendFlagEvaluationMetricsResponse{}), nil
+}
+
+func (tds *testDistService) getEventsReceived() []*backendv1beta1.FlagEvaluationEvent {
+	tds.RLock()
+	defer tds.RUnlock()
+	return tds.events
 }

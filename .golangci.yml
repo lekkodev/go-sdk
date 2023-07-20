@@ -19,6 +19,10 @@ issues:
       text: "use of `log.Printf` forbidden by pattern"
     - path: internal/memory/backend.go
       text: "use of `log.Printf` forbidden by pattern"
+    - path: internal/memory/events.go
+      text: "use of `log.Printf` forbidden by pattern"
+    - path: internal/memory/events.go
+      text: "Non-inherited new context"
 linters:
   enable:
     - asciicheck
