@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	featurev1beta1 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/feature/v1beta1"
-	"github.com/lekkodev/go-sdk/internal/fixtures"
+	"github.com/lekkodev/go-sdk/testdata"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,17 +30,17 @@ import (
 
 func makeConfigs() map[string]*anypb.Any {
 	ret := make(map[string]*anypb.Any)
-	bf := fixtures.Feature(featurev1beta1.FeatureType_FEATURE_TYPE_BOOL, true)
+	bf := testdata.Feature(featurev1beta1.FeatureType_FEATURE_TYPE_BOOL, true)
 	ret["bool"] = bf.GetFeature().GetTree().GetDefault()
-	sf := fixtures.Feature(featurev1beta1.FeatureType_FEATURE_TYPE_STRING, "foo")
+	sf := testdata.Feature(featurev1beta1.FeatureType_FEATURE_TYPE_STRING, "foo")
 	ret["string"] = sf.GetFeature().GetTree().GetDefault()
-	intf := fixtures.Feature(featurev1beta1.FeatureType_FEATURE_TYPE_INT, int64(42))
+	intf := testdata.Feature(featurev1beta1.FeatureType_FEATURE_TYPE_INT, int64(42))
 	ret["int"] = intf.GetFeature().GetTree().GetDefault()
-	ff := fixtures.Feature(featurev1beta1.FeatureType_FEATURE_TYPE_FLOAT, float64(1.2))
+	ff := testdata.Feature(featurev1beta1.FeatureType_FEATURE_TYPE_FLOAT, float64(1.2))
 	ret["float"] = ff.GetFeature().GetTree().GetDefault()
-	jf := fixtures.Feature(featurev1beta1.FeatureType_FEATURE_TYPE_JSON, []any{1.0, 2.0})
+	jf := testdata.Feature(featurev1beta1.FeatureType_FEATURE_TYPE_JSON, []any{1.0, 2.0})
 	ret["json"] = jf.GetFeature().GetTree().GetDefault()
-	pf := fixtures.Feature(featurev1beta1.FeatureType_FEATURE_TYPE_PROTO, wrapperspb.Int32(58))
+	pf := testdata.Feature(featurev1beta1.FeatureType_FEATURE_TYPE_PROTO, wrapperspb.Int32(58))
 	ret["proto"] = pf.GetFeature().GetTree().GetDefault()
 	return ret
 }

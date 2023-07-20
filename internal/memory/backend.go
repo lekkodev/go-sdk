@@ -35,7 +35,7 @@ const (
 )
 
 type Store interface {
-	Evaluate(key string, namespace string, lc map[string]interface{}, dest proto.Message) error
+	Evaluate(key string, namespace string, lekkoContext map[string]interface{}, dest proto.Message) error
 	Close(ctx context.Context) error
 }
 
@@ -163,13 +163,12 @@ func (b *backendStore) loop(ctx context.Context) {
 	b.wg.Add(1)
 	go func() {
 		defer b.wg.Done()
-		after := time.After(b.updateInterval)
+		tick := time.NewTicker(b.updateInterval)
 		for {
 			select {
 			case <-ctx.Done():
 				return
-			case <-after:
-				after = time.After(b.updateInterval)
+			case <-tick.C:
 				should, err := b.shouldUpdateStore(ctx)
 				if err != nil {
 					log.Printf("failed to compare repo version: %v", err)

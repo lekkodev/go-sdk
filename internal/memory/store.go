@@ -31,12 +31,8 @@ var (
 
 func newStore() *store {
 	return &store{
-		configs: make(map[configKey]configData),
+		configs: make(map[string]map[string]configData),
 	}
-}
-
-type configKey struct {
-	namespace, config string
 }
 
 type configData struct {
@@ -49,7 +45,7 @@ type configData struct {
 // all the configs with the contents of a new commit via the Update method.
 type store struct {
 	sync.RWMutex
-	configs   map[configKey]configData
+	configs   map[string]map[string]configData
 	commitSHA string
 }
 
@@ -59,10 +55,11 @@ type storedConfig struct {
 }
 
 func (s *store) update(contents *backendv1beta1.GetRepositoryContentsResponse) bool {
-	newConfigs := make(map[configKey]configData)
+	newConfigs := make(map[string]map[string]configData, len(contents.GetNamespaces()))
 	for _, ns := range contents.GetNamespaces() {
+		newConfigs[ns.GetName()] = make(map[string]configData)
 		for _, cfg := range ns.GetFeatures() {
-			newConfigs[configKey{ns.GetName(), cfg.GetName()}] = configData{
+			newConfigs[ns.GetName()][cfg.GetName()] = configData{
 				config:    cfg.GetFeature(),
 				configSHA: cfg.GetSha(),
 			}
@@ -86,12 +83,14 @@ func (s *store) update(contents *backendv1beta1.GetRepositoryContentsResponse) b
 }
 
 func (s *store) get(namespace, key string) (*storedConfig, error) {
-	ck := configKey{namespace, key}
 	var data configData
 	var ok bool
 	var commitSHA string
 	s.RLock()
-	data, ok = s.configs[ck]
+	ns, nsok := s.configs[namespace]
+	if nsok {
+		data, ok = ns[key]
+	}
 	commitSHA = s.commitSHA
 	s.RUnlock()
 	if !ok {
