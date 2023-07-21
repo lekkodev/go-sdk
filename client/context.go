@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	backendv1beta1 "buf.build/gen/go/lekkodev/sdk/protocolbuffers/go/lekko/client/v1beta1"
+	clientv1beta1 "buf.build/gen/go/lekkodev/sdk/protocolbuffers/go/lekko/client/v1beta1"
 )
 
 // TODO: we need a better name that's not 'context'. Conditions? Features? Values?
@@ -66,39 +66,39 @@ func fromContext(ctx context.Context) map[string]interface{} {
 	return lekkoCtx
 }
 
-func toProto(lc lekkoContext) (map[string]*backendv1beta1.Value, error) {
-	ret := make(map[string]*backendv1beta1.Value)
+func toProto(lc lekkoContext) (map[string]*clientv1beta1.Value, error) {
+	ret := make(map[string]*clientv1beta1.Value)
 	for k, v := range lc {
-		protoValue := &backendv1beta1.Value{}
+		protoValue := &clientv1beta1.Value{}
 		switch tv := v.(type) {
 		case bool:
-			protoValue.Kind = &backendv1beta1.Value_BoolValue{BoolValue: tv}
+			protoValue.Kind = &clientv1beta1.Value_BoolValue{BoolValue: tv}
 		case string:
-			protoValue.Kind = &backendv1beta1.Value_StringValue{StringValue: tv}
+			protoValue.Kind = &clientv1beta1.Value_StringValue{StringValue: tv}
 		case int:
-			protoValue.Kind = &backendv1beta1.Value_IntValue{IntValue: int64(tv)}
+			protoValue.Kind = &clientv1beta1.Value_IntValue{IntValue: int64(tv)}
 		case int8:
-			protoValue.Kind = &backendv1beta1.Value_IntValue{IntValue: int64(tv)}
+			protoValue.Kind = &clientv1beta1.Value_IntValue{IntValue: int64(tv)}
 		case int16:
-			protoValue.Kind = &backendv1beta1.Value_IntValue{IntValue: int64(tv)}
+			protoValue.Kind = &clientv1beta1.Value_IntValue{IntValue: int64(tv)}
 		case int32:
-			protoValue.Kind = &backendv1beta1.Value_IntValue{IntValue: int64(tv)}
+			protoValue.Kind = &clientv1beta1.Value_IntValue{IntValue: int64(tv)}
 		case int64:
-			protoValue.Kind = &backendv1beta1.Value_IntValue{IntValue: tv}
+			protoValue.Kind = &clientv1beta1.Value_IntValue{IntValue: tv}
 		case uint:
-			protoValue.Kind = &backendv1beta1.Value_IntValue{IntValue: int64(tv)}
+			protoValue.Kind = &clientv1beta1.Value_IntValue{IntValue: int64(tv)}
 		case uint16:
-			protoValue.Kind = &backendv1beta1.Value_IntValue{IntValue: int64(tv)}
+			protoValue.Kind = &clientv1beta1.Value_IntValue{IntValue: int64(tv)}
 		case uint32:
-			protoValue.Kind = &backendv1beta1.Value_IntValue{IntValue: int64(tv)}
+			protoValue.Kind = &clientv1beta1.Value_IntValue{IntValue: int64(tv)}
 		case uint64:
-			protoValue.Kind = &backendv1beta1.Value_IntValue{IntValue: int64(tv)}
+			protoValue.Kind = &clientv1beta1.Value_IntValue{IntValue: int64(tv)}
 		case uint8:
-			protoValue.Kind = &backendv1beta1.Value_IntValue{IntValue: int64(tv)}
+			protoValue.Kind = &clientv1beta1.Value_IntValue{IntValue: int64(tv)}
 		case float32:
-			protoValue.Kind = &backendv1beta1.Value_DoubleValue{DoubleValue: float64(tv)}
+			protoValue.Kind = &clientv1beta1.Value_DoubleValue{DoubleValue: float64(tv)}
 		case float64:
-			protoValue.Kind = &backendv1beta1.Value_DoubleValue{DoubleValue: tv}
+			protoValue.Kind = &clientv1beta1.Value_DoubleValue{DoubleValue: tv}
 		default:
 			return nil, fmt.Errorf("context value of type %T not supported", tv)
 		}

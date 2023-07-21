@@ -16,6 +16,7 @@ package memory
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -32,6 +33,7 @@ import (
 
 const (
 	lekkoAPIKeyHeader = "apikey"
+	eventsBatchSize   = 100
 )
 
 type Store interface {
@@ -41,10 +43,10 @@ type Store interface {
 
 // Constructs an in-memory store that fetches configs from lekko's backend.
 func NewBackendStore(ctx context.Context, apikey, url, ownerName, repoName string, updateInterval time.Duration) (Store, error) {
-	return newBackendStore(ctx, apikey, ownerName, repoName, updateInterval, backendv1beta1connect.NewDistributionServiceClient(http.DefaultClient, url))
+	return newBackendStore(ctx, apikey, ownerName, repoName, updateInterval, backendv1beta1connect.NewDistributionServiceClient(http.DefaultClient, url), eventsBatchSize)
 }
 
-func newBackendStore(ctx context.Context, apikey, ownerName, repoName string, updateInterval time.Duration, distClient backendv1beta1connect.DistributionServiceClient) (*backendStore, error) {
+func newBackendStore(ctx context.Context, apikey, ownerName, repoName string, updateInterval time.Duration, distClient backendv1beta1connect.DistributionServiceClient, eventsBatchSize int) (*backendStore, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	b := &backendStore{
 		distClient: distClient,
@@ -58,9 +60,12 @@ func newBackendStore(ctx context.Context, apikey, ownerName, repoName string, up
 		cancel:         cancel,
 	}
 	// register with lekko backend
-	if err := b.registerWithBackoff(ctx); err != nil {
+	sessionKey, err := b.registerWithBackoff(ctx)
+	if err != nil {
 		return nil, errors.Wrap(err, "error registering client")
 	}
+	b.sessionKey = sessionKey
+	b.eventBatcher = newEventBatcher(ctx, distClient, b.sessionKey, b.apikey, eventsBatchSize)
 	// initialize the store once with configs
 	if _, err := b.updateStoreWithBackoff(ctx); err != nil {
 		return nil, err
@@ -78,12 +83,14 @@ type backendStore struct {
 	wg                 sync.WaitGroup
 	updateInterval     time.Duration
 	cancel             context.CancelFunc
+	eventBatcher       *eventBatcher
 }
 
 // Close implements Store.
 func (b *backendStore) Close(ctx context.Context) error {
 	// cancel any ongoing background loops
 	b.cancel()
+	b.eventBatcher.close(ctx)
 	// wait for background work to complete
 	b.wg.Wait()
 	_, err := b.distClient.DeregisterClient(ctx, connect.NewRequest(&backendv1beta1.DeregisterClientRequest{
@@ -94,10 +101,24 @@ func (b *backendStore) Close(ctx context.Context) error {
 
 // Evaluate implements Store.
 func (b *backendStore) Evaluate(key string, namespace string, lc map[string]interface{}, dest protoreflect.ProtoMessage) error {
-	return b.store.evaluateType(key, namespace, lc, dest)
+	cfg, rp, err := b.store.evaluateType(key, namespace, lc, dest)
+	if err != nil {
+		return err
+	}
+	// track metrics
+	b.eventBatcher.track(&backendv1beta1.FlagEvaluationEvent{
+		RepoKey:       b.repoKey,
+		CommitSha:     cfg.CommitSHA,
+		FeatureSha:    cfg.ConfigSHA,
+		NamespaceName: namespace,
+		FeatureName:   cfg.Config.GetKey(),
+		ContextKeys:   toContextKeysProto(lc),
+		ResultPath:    toResultPathProto(rp),
+	})
+	return nil
 }
 
-func (b *backendStore) registerWithBackoff(ctx context.Context) error {
+func (b *backendStore) registerWithBackoff(ctx context.Context) (string, error) {
 	req := connect.NewRequest(&backendv1beta1.RegisterClientRequest{
 		RepoKey:       b.repoKey,
 		NamespaceList: []string{}, // register all namespaces
@@ -113,12 +134,13 @@ func (b *backendStore) registerWithBackoff(ctx context.Context) error {
 	exp := backoff.NewExponentialBackOff()
 	exp.MaxElapsedTime = 5 * time.Second
 	if err := backoff.Retry(op, exp); err != nil {
-		return err
+		return "", err
 	}
+	var sessionKey string
 	if resp != nil {
-		b.sessionKey = resp.Msg.GetSessionKey()
+		sessionKey = resp.Msg.GetSessionKey()
 	}
-	return nil
+	return sessionKey, nil
 }
 
 func (b *backendStore) updateStoreWithBackoff(ctx context.Context) (bool, error) {
@@ -186,4 +208,23 @@ func (b *backendStore) loop(ctx context.Context) {
 			}
 		}
 	}()
+}
+
+func toContextKeysProto(lc map[string]interface{}) []*backendv1beta1.ContextKey {
+	var ret []*backendv1beta1.ContextKey
+	for k, v := range lc {
+		ret = append(ret, &backendv1beta1.ContextKey{
+			Key:  k,
+			Type: fmt.Sprintf("%T", v),
+		})
+	}
+	return ret
+}
+
+func toResultPathProto(rp []int) []int32 {
+	ret := make([]int32, len(rp))
+	for i := 0; i < len(rp); i++ {
+		ret[i] = int32(rp[i])
+	}
+	return ret
 }

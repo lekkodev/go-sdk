@@ -111,18 +111,18 @@ func (s *store) shouldUpdate(newCommitSHA string) bool {
 	return shouldUpdate
 }
 
-func (s *store) evaluateType(key string, namespace string, lc map[string]interface{}, dest proto.Message) error {
+func (s *store) evaluateType(key string, namespace string, lc map[string]interface{}, dest proto.Message) (*storedConfig, eval.ResultPath, error) {
 	cfg, err := s.get(namespace, key)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	evaluableConfig := eval.NewV1Beta3(cfg.Config, namespace)
-	a, _, err := evaluableConfig.Evaluate(lc)
+	a, rp, err := evaluableConfig.Evaluate(lc)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	if err := a.UnmarshalTo(dest); err != nil {
-		return errors.Wrapf(err, "invalid type, expecting %T", dest)
+		return nil, nil, errors.Wrapf(err, "invalid type, expecting %T", dest)
 	}
-	return nil
+	return cfg, rp, nil
 }
