@@ -282,7 +282,7 @@ func (a *apiProvider) GetJSONFeature(ctx context.Context, key string, namespace 
 		return errors.Wrap(err, "error hitting lekko backend")
 	}
 	if err := json.Unmarshal(resp.Msg.GetValue(), result); err != nil {
-		return errors.Wrap(err, fmt.Sprintf("failed to unmarshal json into go type %T", result))
+		return errors.Wrapf(err, "failed to unmarshal json into go type %T", result)
 	}
 	return nil
 }
