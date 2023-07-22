@@ -25,21 +25,22 @@ import (
 )
 
 func main() {
-	var key, mode, namespace, config string
+	var key, mode, namespace, config, path string
 	flag.StringVar(&key, "lekko-apikey", "", "API key for lekko given to your organization")
-	flag.StringVar(&mode, "mode", "api", "Mode to start the sdk in (api, in-memory, local)")
+	flag.StringVar(&mode, "mode", "api", "Mode to start the sdk in (api, backend, git, static)")
 	flag.StringVar(&namespace, "namespace", "default", "namespace to request the config from")
 	flag.StringVar(&config, "config", "hello", "name of the config to request")
+	flag.StringVar(&path, "path", "", "path to config repo if operating in git mode")
 	flag.Parse()
 
 	var provider client.Provider
-	if key == "" {
+	if mode != "static" && key == "" {
 		log.Fatal("Lekko API key not provided. Exiting...")
 	}
 	var err error
 	ctx, cancelF := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelF()
-	provider, err = getProvider(ctx, key, mode)
+	provider, err = getProvider(ctx, key, mode, path)
 	if err != nil {
 		log.Fatalf("error when starting in %s mode: %v\n", mode, err)
 	}
@@ -55,7 +56,7 @@ func main() {
 	log.Printf("%s/%s [%T]: %v\n", namespace, config, result, result)
 }
 
-func getProvider(ctx context.Context, key, mode string) (client.Provider, error) {
+func getProvider(ctx context.Context, key, mode, path string) (client.Provider, error) {
 	rk := &client.RepositoryKey{
 		OwnerName: "lekkodev", // update me
 		RepoName:  "example",  // update me
@@ -65,11 +66,19 @@ func getProvider(ctx context.Context, key, mode string) (client.Provider, error)
 	switch mode {
 	case "api":
 		provider, err = client.ConnectAPIProvider(ctx, key, rk)
-	case "in-memory":
-		provider, err = client.BackendInMemoryProvider(ctx, &client.InMemoryProviderOptions{
-			APIKey:         key,
-			RepositoryKey:  *rk,
-			UpdateInterval: 10 * time.Second,
+	case "backend":
+		provider, err = client.BackendInMemoryProvider(ctx, 10*time.Second, &client.InMemoryProviderOptions{
+			APIKey:        key,
+			RepositoryKey: *rk,
+		})
+	case "git":
+		provider, err = client.GitInMemoryProvider(ctx, path, &client.InMemoryProviderOptions{
+			APIKey:        key,
+			RepositoryKey: *rk,
+		})
+	case "static":
+		provider, err = client.StaticInMemoryProvider(ctx, path, &client.InMemoryProviderOptions{
+			RepositoryKey: *rk,
 		})
 	default:
 		err = errors.Errorf("unknown mode %s", mode)

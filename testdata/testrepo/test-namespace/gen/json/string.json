@@ -1,0 +1,11 @@
+{
+  "key": "string",
+  "description": "my feature description",
+  "tree": {
+    "default": {
+      "@type": "type.googleapis.com/google.protobuf.StringValue",
+      "value": ""
+    }
+  },
+  "type": "FEATURE_TYPE_STRING"
+}

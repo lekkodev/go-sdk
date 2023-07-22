@@ -131,6 +131,9 @@ func (e *eventBatcher) sendBatchWithBackoff(ctx context.Context, batch []*backen
 }
 
 func (e *eventBatcher) close(ctx context.Context) error {
+	if e == nil {
+		return nil
+	}
 	close(e.events)
 	e.cancel()
 	e.wg.Wait()

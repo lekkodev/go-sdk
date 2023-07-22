@@ -26,7 +26,7 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func valToAny(featureType featurev1beta1.FeatureType, v any) *anypb.Any {
+func ValToAny(featureType featurev1beta1.FeatureType, v any) *anypb.Any {
 	var err error
 	dest := &anypb.Any{}
 	switch featureType {
@@ -80,7 +80,7 @@ func valToAny(featureType featurev1beta1.FeatureType, v any) *anypb.Any {
 }
 
 func Feature(ft featurev1beta1.FeatureType, value any) *backendv1beta1.Feature {
-	a := valToAny(ft, value)
+	a := ValToAny(ft, value)
 	parts := strings.Split(ft.String(), "_")
 	name := strings.ToLower(parts[len(parts)-1])
 	return &backendv1beta1.Feature{

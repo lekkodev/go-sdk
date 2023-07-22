@@ -16,6 +16,7 @@ package memory
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	backendv1beta1 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/backend/v1beta1"
@@ -73,7 +74,7 @@ func (s *store) update(contents *backendv1beta1.GetRepositoryContentsResponse) b
 	}
 	var updated bool
 	s.Lock()
-	if commitSHA != s.commitSHA {
+	if shouldUpdateCheck(s.commitSHA, commitSHA) {
 		s.configs = newConfigs
 		s.commitSHA = commitSHA
 		updated = true
@@ -106,9 +107,21 @@ func (s *store) get(namespace, key string) (*storedConfig, error) {
 func (s *store) shouldUpdate(newCommitSHA string) bool {
 	var shouldUpdate bool
 	s.RLock()
-	shouldUpdate = newCommitSHA != s.commitSHA
+	shouldUpdate = shouldUpdateCheck(s.commitSHA, newCommitSHA)
 	s.RUnlock()
 	return shouldUpdate
+}
+
+func shouldUpdateCheck(sha, newSHA string) bool {
+	return sha != newSHA || strings.HasSuffix(newSHA, "dirty")
+}
+
+func (s *store) getCommitSha() string {
+	var ret string
+	s.RLock()
+	ret = s.commitSHA
+	s.RUnlock()
+	return ret
 }
 
 func (s *store) evaluateType(key string, namespace string, lc map[string]interface{}, dest proto.Message) (*storedConfig, eval.ResultPath, error) {

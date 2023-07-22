@@ -64,8 +64,8 @@ func newBackendStore(ctx context.Context, apikey, ownerName, repoName string, up
 	if err != nil {
 		return nil, errors.Wrap(err, "error registering client")
 	}
-	b.sessionKey = sessionKey
-	b.eventBatcher = newEventBatcher(ctx, distClient, b.sessionKey, b.apikey, eventsBatchSize)
+	b.sessionkey = sessionKey
+	b.eb = newEventBatcher(ctx, distClient, b.sessionkey, b.apikey, eventsBatchSize)
 	// initialize the store once with configs
 	if _, err := b.updateStoreWithBackoff(ctx); err != nil {
 		return nil, err
@@ -79,22 +79,22 @@ type backendStore struct {
 	distClient         backendv1beta1connect.DistributionServiceClient
 	store              *store
 	repoKey            *backendv1beta1.RepositoryKey
-	apikey, sessionKey string
+	apikey, sessionkey string
 	wg                 sync.WaitGroup
 	updateInterval     time.Duration
 	cancel             context.CancelFunc
-	eventBatcher       *eventBatcher
+	eb                 *eventBatcher
 }
 
 // Close implements Store.
 func (b *backendStore) Close(ctx context.Context) error {
 	// cancel any ongoing background loops
 	b.cancel()
-	b.eventBatcher.close(ctx)
+	b.eb.close(ctx)
 	// wait for background work to complete
 	b.wg.Wait()
 	_, err := b.distClient.DeregisterClient(ctx, connect.NewRequest(&backendv1beta1.DeregisterClientRequest{
-		SessionKey: b.sessionKey,
+		SessionKey: b.sessionkey,
 	}))
 	return err
 }
@@ -106,7 +106,7 @@ func (b *backendStore) Evaluate(key string, namespace string, lc map[string]inte
 		return err
 	}
 	// track metrics
-	b.eventBatcher.track(&backendv1beta1.FlagEvaluationEvent{
+	b.eb.track(&backendv1beta1.FlagEvaluationEvent{
 		RepoKey:       b.repoKey,
 		CommitSha:     cfg.CommitSHA,
 		FeatureSha:    cfg.ConfigSHA,
@@ -146,7 +146,7 @@ func (b *backendStore) registerWithBackoff(ctx context.Context) (string, error) 
 func (b *backendStore) updateStoreWithBackoff(ctx context.Context) (bool, error) {
 	req := connect.NewRequest(&backendv1beta1.GetRepositoryContentsRequest{
 		RepoKey:    b.repoKey,
-		SessionKey: b.sessionKey,
+		SessionKey: b.sessionkey,
 	})
 	req.Header().Set(lekkoAPIKeyHeader, b.apikey)
 	var contents *backendv1beta1.GetRepositoryContentsResponse
@@ -170,7 +170,7 @@ func (b *backendStore) updateStoreWithBackoff(ctx context.Context) (bool, error)
 func (b *backendStore) shouldUpdateStore(ctx context.Context) (bool, error) {
 	req := connect.NewRequest(&backendv1beta1.GetRepositoryVersionRequest{
 		RepoKey:    b.repoKey,
-		SessionKey: b.sessionKey,
+		SessionKey: b.sessionkey,
 	})
 	req.Header().Set(lekkoAPIKeyHeader, b.apikey)
 	resp, err := b.distClient.GetRepositoryVersion(ctx, req)

@@ -33,26 +33,28 @@ type InMemoryProviderOptions struct {
 	// Repository Key of the configuration repository you wish to read
 	// configs from.
 	RepositoryKey RepositoryKey
-	// Interval at which you want to refresh configs from Lekko.
-	// Recommend 15 to 30 seconds.
-	UpdateInterval time.Duration
 }
 
 type inMemoryProviderType string
 
 const (
 	inMemoryProviderTypeBackend inMemoryProviderType = "backend"
+	inMemoryProviderTypeGit     inMemoryProviderType = "git"
+	inMemoryProviderTypeStatic  inMemoryProviderType = "static"
 
 	minUpdateInterval = time.Second
 )
 
 // Constructs a provider that refreshes configs from Lekko backend repeatedly in the background,
 // caching the configs in-memory.
-func BackendInMemoryProvider(ctx context.Context, opts *InMemoryProviderOptions) (Provider, error) {
+func BackendInMemoryProvider(ctx context.Context, updateInterval time.Duration, opts *InMemoryProviderOptions) (Provider, error) {
 	if err := opts.validate(inMemoryProviderTypeBackend); err != nil {
 		return nil, err
 	}
-	backend, err := memory.NewBackendStore(ctx, opts.APIKey, defaultAPIURL, opts.RepositoryKey.OwnerName, opts.RepositoryKey.RepoName, opts.UpdateInterval)
+	if updateInterval.Seconds() < minUpdateInterval.Seconds() {
+		return nil, errors.Errorf("update interval too small, minimum %v", minUpdateInterval)
+	}
+	backend, err := memory.NewBackendStore(ctx, opts.APIKey, defaultAPIURL, opts.RepositoryKey.OwnerName, opts.RepositoryKey.RepoName, updateInterval)
 	if err != nil {
 		return nil, err
 	}
@@ -61,18 +63,51 @@ func BackendInMemoryProvider(ctx context.Context, opts *InMemoryProviderOptions)
 	}, nil
 }
 
+// Reads configuration from a git repository on-disk. This provider will remain up to date with
+// changes made to the git repository on-disk. If on-disk contents change, this provider's internal
+// state will be updated without restart.
+// This provider requires an api key to communicate with Lekko.
+// Provide the path to the root of the repository. 'path/.git/' should be a valid directory.
+func GitInMemoryProvider(ctx context.Context, path string, opts *InMemoryProviderOptions) (Provider, error) {
+	if err := opts.validate(inMemoryProviderTypeGit); err != nil {
+		return nil, err
+	}
+	gitStore, err := memory.NewGitStore(ctx, opts.APIKey, defaultAPIURL, opts.RepositoryKey.OwnerName, opts.RepositoryKey.RepoName, path)
+	if err != nil {
+		return nil, err
+	}
+	return &inMemoryProvider{
+		store: gitStore,
+	}, nil
+}
+
+// Reads configuration from a git repository on-disk. This provider will remain up to date with
+// changes made to the git repository on-disk. If on-disk contents change, this provider's internal
+// state will be updated without restart.
+// This provider does not require an api key and can be used while developing locally.
+// Provide the path to the root of the repository. 'path/.git/' should be a valid directory.
+func StaticInMemoryProvider(ctx context.Context, path string, opts *InMemoryProviderOptions) (Provider, error) {
+	if err := opts.validate(inMemoryProviderTypeStatic); err != nil {
+		return nil, err
+	}
+	gitStore, err := memory.NewGitStore(ctx, "", "", opts.RepositoryKey.OwnerName, opts.RepositoryKey.RepoName, path)
+	if err != nil {
+		return nil, err
+	}
+	return &inMemoryProvider{
+		store: gitStore,
+	}, nil
+}
+
 func (opts *InMemoryProviderOptions) validate(t inMemoryProviderType) error {
 	if opts == nil {
 		return errors.New("options cannot be nil")
 	}
-	if t == inMemoryProviderTypeBackend && len(opts.APIKey) == 0 {
+	if (t == inMemoryProviderTypeBackend || t == inMemoryProviderTypeGit) && len(opts.APIKey) == 0 {
 		return errors.New("no apikey given for backend provider")
 	}
 	if len(opts.RepositoryKey.OwnerName) == 0 || len(opts.RepositoryKey.RepoName) == 0 {
 		return errors.New("incomplete repository key given")
-	}
-	if opts.UpdateInterval.Seconds() < minUpdateInterval.Seconds() {
-		return errors.Errorf("update interval too small, minimum %s", minUpdateInterval)
 	}
 	return nil
 }
