@@ -15,8 +15,9 @@
 package memory
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
-	"strings"
 	"sync"
 
 	backendv1beta1 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/backend/v1beta1"
@@ -46,8 +47,9 @@ type configData struct {
 // all the configs with the contents of a new commit via the Update method.
 type store struct {
 	sync.RWMutex
-	configs   map[string]map[string]configData
-	commitSHA string
+	configs     map[string]map[string]configData
+	commitSHA   string
+	contentHash string
 }
 
 type storedConfig struct {
@@ -55,7 +57,29 @@ type storedConfig struct {
 	CommitSHA, ConfigSHA string
 }
 
-func (s *store) update(contents *backendv1beta1.GetRepositoryContentsResponse) bool {
+// Attempts to atomically update the store. This method will first hold a read-lock
+// to check if the store should be updated. If not, we can exit early and avoid holding
+// a write lock. To do this, we rely on two things - the git commit hash and a sha256
+// hash of the configs.
+func (s *store) update(contents *backendv1beta1.GetRepositoryContentsResponse) (bool, error) {
+	if contents == nil {
+		return false, errors.New("update with empty contents")
+	}
+	req := &updateRequest{contents: contents}
+	// preemptive check to avoid holding the write lock at the
+	// last minute if we can avoid it
+	var shouldUpdate bool
+	var err error
+	s.RLock()
+	shouldUpdate, err = s.shouldUpdateUnsafe(req)
+	s.RUnlock()
+	if err != nil {
+		return false, err
+	}
+	if !shouldUpdate {
+		return false, nil
+	}
+
 	newConfigs := make(map[string]map[string]configData, len(contents.GetNamespaces()))
 	for _, ns := range contents.GetNamespaces() {
 		newConfigs[ns.GetName()] = make(map[string]configData)
@@ -66,21 +90,23 @@ func (s *store) update(contents *backendv1beta1.GetRepositoryContentsResponse) b
 			}
 		}
 	}
-	commitSHA := contents.GetCommitSha()
-	// preemptive check to avoid holding the write lock at the
-	// last minute if we can avoid it
-	if !s.shouldUpdate(commitSHA) {
-		return false
-	}
-	var updated bool
+	// perform the update
 	s.Lock()
-	if shouldUpdateCheck(s.commitSHA, commitSHA) {
-		s.configs = newConfigs
-		s.commitSHA = commitSHA
-		updated = true
+	defer s.Unlock()
+	ok, err := s.shouldUpdateUnsafe(req)
+	if err != nil {
+		return false, err
 	}
-	s.Unlock()
-	return updated
+	if !ok {
+		return false, nil
+	}
+	if err := req.hash(); err != nil {
+		return false, err
+	}
+	s.configs = newConfigs
+	s.commitSHA = contents.GetCommitSha()
+	s.contentHash = *req.contentHash
+	return true, nil
 }
 
 func (s *store) get(namespace, key string) (*storedConfig, error) {
@@ -104,16 +130,17 @@ func (s *store) get(namespace, key string) (*storedConfig, error) {
 	}, nil
 }
 
-func (s *store) shouldUpdate(newCommitSHA string) bool {
-	var shouldUpdate bool
-	s.RLock()
-	shouldUpdate = shouldUpdateCheck(s.commitSHA, newCommitSHA)
-	s.RUnlock()
-	return shouldUpdate
-}
-
-func shouldUpdateCheck(sha, newSHA string) bool {
-	return sha != newSHA || strings.HasSuffix(newSHA, "dirty")
+// Note: make sure this method call is wrapped in a mutex lock
+// Returns the computed content hash (if it exists), allowing
+// the caller to prevent rehashing.
+func (s *store) shouldUpdateUnsafe(req *updateRequest) (bool, error) {
+	if req.contents.GetCommitSha() != s.commitSHA {
+		return true, nil
+	}
+	if err := req.hash(); err != nil {
+		return false, err
+	}
+	return *req.contentHash != s.contentHash, nil
 }
 
 func (s *store) getCommitSha() string {
@@ -138,4 +165,25 @@ func (s *store) evaluateType(key string, namespace string, lc map[string]interfa
 		return nil, nil, errors.Wrapf(err, "invalid type, expecting %T", dest)
 	}
 	return cfg, rp, nil
+}
+
+// wraps the contents in an object that caches its sha256 hash
+// for easy comparison.
+type updateRequest struct {
+	contents    *backendv1beta1.GetRepositoryContentsResponse
+	contentHash *string
+}
+
+func (ur *updateRequest) hash() error {
+	if ur.contentHash != nil {
+		return nil
+	}
+	bytes, err := proto.MarshalOptions{Deterministic: true}.Marshal(ur.contents)
+	if err != nil {
+		return err
+	}
+	shaBytes := sha256.Sum256(bytes)
+	sha := hex.EncodeToString(shaBytes[:])
+	ur.contentHash = &sha
+	return nil
 }
