@@ -38,9 +38,9 @@ import (
 
 // Constructs an in-memory store that fetches configs from a local git repo at the given path.
 // If api key is empty, the store runs in local (offline) mode, and does not communicate with Lekko.
-func NewGitStore(ctx context.Context, apikey, url, ownerName, repoName, path string) (Store, error) {
+func NewGitStore(ctx context.Context, apiKey, url, ownerName, repoName, path string) (Store, error) {
 	var distClient backendv1beta1connect.DistributionServiceClient
-	if len(apikey) > 0 {
+	if len(apiKey) > 0 {
 		distClient = backendv1beta1connect.NewDistributionServiceClient(http.DefaultClient, url)
 	}
 	fs := osfs.New(path)
@@ -49,12 +49,12 @@ func NewGitStore(ctx context.Context, apikey, url, ownerName, repoName, path str
 		return nil, err
 	}
 	storer := filesystem.NewStorage(gitfs, cache.NewObjectLRUDefault())
-	return newGitStore(ctx, apikey, ownerName, repoName, storer, fs, distClient, eventsBatchSize, true)
+	return newGitStore(ctx, apiKey, ownerName, repoName, storer, fs, distClient, eventsBatchSize, true)
 }
 
 func newGitStore(
 	ctx context.Context,
-	apikey, ownerName, repoName string,
+	apiKey, ownerName, repoName string,
 	storer storage.Storer, fs billy.Filesystem,
 	distClient backendv1beta1connect.DistributionServiceClient,
 	eventsBatchSize int, watch bool,
@@ -67,20 +67,20 @@ func newGitStore(
 			OwnerName: ownerName,
 			RepoName:  repoName,
 		},
-		apikey: apikey,
+		apiKey: apiKey,
 		cancel: cancel,
 		storer: storer,
 		fs:     fs,
 	}
 	if distClient != nil {
 		// register with lekko backend
-		sessionkey, err := g.registerWithBackoff(ctx)
+		sessionKey, err := g.registerWithBackoff(ctx)
 		if err != nil {
 			// silently fail on registration errors in git mode
 			log.Printf("error registering lekko client: %v", err)
 		}
-		g.sessionkey = sessionkey
-		g.eb = newEventBatcher(ctx, distClient, g.sessionkey, g.apikey, eventsBatchSize)
+		g.sessionKey = sessionKey
+		g.eb = newEventBatcher(ctx, distClient, g.sessionKey, g.apiKey, eventsBatchSize)
 	}
 	if _, err := g.load(ctx); err != nil {
 		return nil, err
@@ -97,7 +97,7 @@ type gitStore struct {
 	distClient         backendv1beta1connect.DistributionServiceClient
 	store              *store
 	repoKey            *backendv1beta1.RepositoryKey
-	apikey, sessionkey string
+	apiKey, sessionKey string
 	wg                 sync.WaitGroup
 	cancel             context.CancelFunc
 	eb                 *eventBatcher
@@ -111,7 +111,7 @@ func (g *gitStore) registerWithBackoff(ctx context.Context) (string, error) {
 		RepoKey:       g.repoKey,
 		NamespaceList: []string{}, // register all namespaces
 	})
-	req.Header().Set(lekkoAPIKeyHeader, g.apikey)
+	req.Header().Set(lekkoAPIKeyHeader, g.apiKey)
 	var resp *connect.Response[backendv1beta1.RegisterClientResponse]
 	var err error
 	op := func() error {
@@ -200,7 +200,7 @@ func (g *gitStore) Close(ctx context.Context) error {
 	g.wg.Wait()
 	if g.distClient != nil {
 		if _, err := g.distClient.DeregisterClient(ctx, connect.NewRequest(&backendv1beta1.DeregisterClientRequest{
-			SessionKey: g.sessionkey,
+			SessionKey: g.sessionKey,
 		})); err != nil {
 			log.Printf("error deregistering lekko client: %v", err)
 		}

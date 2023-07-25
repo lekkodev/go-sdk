@@ -4,7 +4,7 @@
   "tree": {
     "default": {
       "@type": "type.googleapis.com/google.protobuf.BoolValue",
-      "value": false
+      "value": true
     }
   },
   "type": "FEATURE_TYPE_BOOL"

@@ -43,11 +43,11 @@ func TestGitStore(t *testing.T) {
 
 	bv := wrapperspb.BoolValue{}
 	require.NoError(t, gs.Evaluate("example", "default", nil, &bv))
-	assert.False(t, bv.Value)
+	assert.True(t, bv.Value)
 
 	sv := wrapperspb.StringValue{}
 	require.NoError(t, gs.Evaluate("string", "test-namespace", nil, &sv))
-	assert.Equal(t, sv.Value, "")
+	assert.Equal(t, sv.Value, "foo")
 
 	require.Error(t, gs.Evaluate("not-a-key", "not-a-ns", nil, &bv))
 

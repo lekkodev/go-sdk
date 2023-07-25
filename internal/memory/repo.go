@@ -115,10 +115,9 @@ func (r *repository) getNamespaces() ([]*backendv1beta1.Namespace, error) {
 }
 
 func (r *repository) getConfigs(ns string) ([]*backendv1beta1.Feature, error) {
-	nsPath := ns
-	dirEntries, err := r.fs.ReadDir(nsPath)
+	dirEntries, err := r.fs.ReadDir(ns)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read '%s'", nsPath)
+		return nil, errors.Wrapf(err, "failed to read '%s'", ns)
 	}
 	var configNames []string
 	for _, entry := range dirEntries {
