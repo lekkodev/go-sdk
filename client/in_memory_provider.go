@@ -26,35 +26,23 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-type InMemoryProviderOptions struct {
-	// API key used to communicate with Lekko.
-	// lekko_**********
-	APIKey string
-	// Repository Key of the configuration repository you wish to read
-	// configs from.
-	RepositoryKey RepositoryKey
-}
-
-type inMemoryProviderType string
-
 const (
-	inMemoryProviderTypeBackend inMemoryProviderType = "backend"
-	inMemoryProviderTypeGit     inMemoryProviderType = "git"
-	inMemoryProviderTypeStatic  inMemoryProviderType = "static"
-
 	minUpdateInterval = time.Second
 )
 
 // Constructs a provider that refreshes configs from Lekko backend repeatedly in the background,
 // caching the configs in-memory.
-func BackendInMemoryProvider(ctx context.Context, updateInterval time.Duration, opts *InMemoryProviderOptions) (Provider, error) {
-	if err := opts.validate(inMemoryProviderTypeBackend); err != nil {
-		return nil, err
+func BackendInMemoryProvider(ctx context.Context, apiKey string, repoKey RepositoryKey, updateInterval time.Duration) (Provider, error) {
+	if len(apiKey) == 0 {
+		return nil, errors.New("api key is required")
+	}
+	if len(repoKey.OwnerName) == 0 || len(repoKey.RepoName) == 0 {
+		return nil, errors.New("missing repo key information")
 	}
 	if updateInterval.Seconds() < minUpdateInterval.Seconds() {
 		return nil, errors.Errorf("update interval too small, minimum %v", minUpdateInterval)
 	}
-	backend, err := memory.NewBackendStore(ctx, opts.APIKey, defaultAPIURL, opts.RepositoryKey.OwnerName, opts.RepositoryKey.RepoName, updateInterval)
+	backend, err := memory.NewBackendStore(ctx, apiKey, defaultAPIURL, repoKey.OwnerName, repoKey.RepoName, updateInterval)
 	if err != nil {
 		return nil, err
 	}
@@ -68,11 +56,14 @@ func BackendInMemoryProvider(ctx context.Context, updateInterval time.Duration, 
 // state will be updated without restart.
 // This provider requires an api key to communicate with Lekko.
 // Provide the path to the root of the repository. 'path/.git/' should be a valid directory.
-func GitInMemoryProvider(ctx context.Context, path string, opts *InMemoryProviderOptions) (Provider, error) {
-	if err := opts.validate(inMemoryProviderTypeGit); err != nil {
-		return nil, err
+func GitInMemoryProvider(ctx context.Context, path, apiKey string, repoKey RepositoryKey) (Provider, error) {
+	if len(apiKey) == 0 {
+		return nil, errors.New("api key is required")
 	}
-	gitStore, err := memory.NewGitStore(ctx, opts.APIKey, defaultAPIURL, opts.RepositoryKey.OwnerName, opts.RepositoryKey.RepoName, path)
+	if len(repoKey.OwnerName) == 0 || len(repoKey.RepoName) == 0 {
+		return nil, errors.New("missing repo key information")
+	}
+	gitStore, err := memory.NewGitStore(ctx, apiKey, defaultAPIURL, repoKey.OwnerName, repoKey.RepoName, path)
 	if err != nil {
 		return nil, err
 	}
@@ -86,30 +77,17 @@ func GitInMemoryProvider(ctx context.Context, path string, opts *InMemoryProvide
 // state will be updated without restart.
 // This provider does not require an api key and can be used while developing locally.
 // Provide the path to the root of the repository. 'path/.git/' should be a valid directory.
-func StaticInMemoryProvider(ctx context.Context, path string, opts *InMemoryProviderOptions) (Provider, error) {
-	if err := opts.validate(inMemoryProviderTypeStatic); err != nil {
-		return nil, err
+func GitLocalInMemoryProvider(ctx context.Context, path string, repoKey RepositoryKey) (Provider, error) {
+	if len(repoKey.OwnerName) == 0 || len(repoKey.RepoName) == 0 {
+		return nil, errors.New("missing repo key information")
 	}
-	gitStore, err := memory.NewGitStore(ctx, "", "", opts.RepositoryKey.OwnerName, opts.RepositoryKey.RepoName, path)
+	gitStore, err := memory.NewGitStore(ctx, "", "", repoKey.OwnerName, repoKey.RepoName, path)
 	if err != nil {
 		return nil, err
 	}
 	return &inMemoryProvider{
 		store: gitStore,
 	}, nil
-}
-
-func (opts *InMemoryProviderOptions) validate(t inMemoryProviderType) error {
-	if opts == nil {
-		return errors.New("options cannot be nil")
-	}
-	if (t == inMemoryProviderTypeBackend || t == inMemoryProviderTypeGit) && len(opts.APIKey) == 0 {
-		return errors.New("no apikey given for backend provider")
-	}
-	if len(opts.RepositoryKey.OwnerName) == 0 || len(opts.RepositoryKey.RepoName) == 0 {
-		return errors.New("incomplete repository key given")
-	}
-	return nil
 }
 
 type inMemoryProvider struct {

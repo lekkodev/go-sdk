@@ -27,7 +27,7 @@ import (
 func main() {
 	var key, mode, namespace, config, path string
 	flag.StringVar(&key, "lekko-apikey", "", "API key for lekko given to your organization")
-	flag.StringVar(&mode, "mode", "api", "Mode to start the sdk in (api, backend, git, static)")
+	flag.StringVar(&mode, "mode", "api", "Mode to start the sdk in (api, backend, git, gitlocal)")
 	flag.StringVar(&namespace, "namespace", "default", "namespace to request the config from")
 	flag.StringVar(&config, "config", "hello", "name of the config to request")
 	flag.StringVar(&path, "path", "", "path to config repo if operating in git mode")
@@ -67,19 +67,11 @@ func getProvider(ctx context.Context, key, mode, path string) (client.Provider, 
 	case "api":
 		provider, err = client.ConnectAPIProvider(ctx, key, rk)
 	case "backend":
-		provider, err = client.BackendInMemoryProvider(ctx, 10*time.Second, &client.InMemoryProviderOptions{
-			APIKey:        key,
-			RepositoryKey: *rk,
-		})
+		provider, err = client.BackendInMemoryProvider(ctx, key, *rk, 10*time.Second)
 	case "git":
-		provider, err = client.GitInMemoryProvider(ctx, path, &client.InMemoryProviderOptions{
-			APIKey:        key,
-			RepositoryKey: *rk,
-		})
-	case "static":
-		provider, err = client.StaticInMemoryProvider(ctx, path, &client.InMemoryProviderOptions{
-			RepositoryKey: *rk,
-		})
+		provider, err = client.GitInMemoryProvider(ctx, path, key, *rk)
+	case "gitlocal":
+		provider, err = client.GitLocalInMemoryProvider(ctx, path, *rk)
 	default:
 		err = errors.Errorf("unknown mode %s", mode)
 	}
