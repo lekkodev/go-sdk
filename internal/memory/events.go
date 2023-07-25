@@ -33,7 +33,7 @@ const (
 func newEventBatcher(
 	ctx context.Context,
 	distClient backendv1beta1connect.DistributionServiceClient,
-	sessionKey, apikey string,
+	sessionKey, apiKey string,
 	batchSize int,
 ) *eventBatcher {
 	ctx, cancel := context.WithCancel(ctx)
@@ -42,7 +42,7 @@ func newEventBatcher(
 		events:     make(chan *backendv1beta1.FlagEvaluationEvent, eventChannelSize),
 		cancel:     cancel,
 		sessionKey: sessionKey,
-		apikey:     apikey,
+		apiKey:     apiKey,
 		batchSize:  batchSize,
 	}
 	eb.wg.Add(1)
@@ -55,7 +55,7 @@ type eventBatcher struct {
 	events             chan *backendv1beta1.FlagEvaluationEvent
 	cancel             context.CancelFunc
 	wg                 sync.WaitGroup
-	sessionKey, apikey string
+	sessionKey, apiKey string
 	batchSize          int
 }
 
@@ -115,7 +115,7 @@ func (e *eventBatcher) sendBatchWithBackoff(ctx context.Context, batch []*backen
 		Events:     batch,
 		SessionKey: e.sessionKey,
 	})
-	req.Header().Set(lekkoAPIKeyHeader, e.apikey)
+	req.Header().Set(lekkoAPIKeyHeader, e.apiKey)
 	op := func() error {
 		_, err := e.distClient.SendFlagEvaluationMetrics(ctx, req)
 		if err != nil {
@@ -131,6 +131,9 @@ func (e *eventBatcher) sendBatchWithBackoff(ctx context.Context, batch []*backen
 }
 
 func (e *eventBatcher) close(ctx context.Context) error {
+	if e == nil {
+		return nil
+	}
 	close(e.events)
 	e.cancel()
 	e.wg.Wait()

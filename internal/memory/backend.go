@@ -42,11 +42,11 @@ type Store interface {
 }
 
 // Constructs an in-memory store that fetches configs from lekko's backend.
-func NewBackendStore(ctx context.Context, apikey, url, ownerName, repoName string, updateInterval time.Duration) (Store, error) {
-	return newBackendStore(ctx, apikey, ownerName, repoName, updateInterval, backendv1beta1connect.NewDistributionServiceClient(http.DefaultClient, url), eventsBatchSize)
+func NewBackendStore(ctx context.Context, apiKey, url, ownerName, repoName string, updateInterval time.Duration) (Store, error) {
+	return newBackendStore(ctx, apiKey, ownerName, repoName, updateInterval, backendv1beta1connect.NewDistributionServiceClient(http.DefaultClient, url), eventsBatchSize)
 }
 
-func newBackendStore(ctx context.Context, apikey, ownerName, repoName string, updateInterval time.Duration, distClient backendv1beta1connect.DistributionServiceClient, eventsBatchSize int) (*backendStore, error) {
+func newBackendStore(ctx context.Context, apiKey, ownerName, repoName string, updateInterval time.Duration, distClient backendv1beta1connect.DistributionServiceClient, eventsBatchSize int) (*backendStore, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	b := &backendStore{
 		distClient: distClient,
@@ -55,7 +55,7 @@ func newBackendStore(ctx context.Context, apikey, ownerName, repoName string, up
 			OwnerName: ownerName,
 			RepoName:  repoName,
 		},
-		apikey:         apikey,
+		apiKey:         apiKey,
 		updateInterval: updateInterval,
 		cancel:         cancel,
 	}
@@ -65,7 +65,7 @@ func newBackendStore(ctx context.Context, apikey, ownerName, repoName string, up
 		return nil, errors.Wrap(err, "error registering client")
 	}
 	b.sessionKey = sessionKey
-	b.eventBatcher = newEventBatcher(ctx, distClient, b.sessionKey, b.apikey, eventsBatchSize)
+	b.eb = newEventBatcher(ctx, distClient, b.sessionKey, b.apiKey, eventsBatchSize)
 	// initialize the store once with configs
 	if _, err := b.updateStoreWithBackoff(ctx); err != nil {
 		return nil, err
@@ -79,18 +79,18 @@ type backendStore struct {
 	distClient         backendv1beta1connect.DistributionServiceClient
 	store              *store
 	repoKey            *backendv1beta1.RepositoryKey
-	apikey, sessionKey string
+	apiKey, sessionKey string
 	wg                 sync.WaitGroup
 	updateInterval     time.Duration
 	cancel             context.CancelFunc
-	eventBatcher       *eventBatcher
+	eb                 *eventBatcher
 }
 
 // Close implements Store.
 func (b *backendStore) Close(ctx context.Context) error {
 	// cancel any ongoing background loops
 	b.cancel()
-	b.eventBatcher.close(ctx)
+	b.eb.close(ctx)
 	// wait for background work to complete
 	b.wg.Wait()
 	_, err := b.distClient.DeregisterClient(ctx, connect.NewRequest(&backendv1beta1.DeregisterClientRequest{
@@ -106,7 +106,7 @@ func (b *backendStore) Evaluate(key string, namespace string, lc map[string]inte
 		return err
 	}
 	// track metrics
-	b.eventBatcher.track(&backendv1beta1.FlagEvaluationEvent{
+	b.eb.track(&backendv1beta1.FlagEvaluationEvent{
 		RepoKey:       b.repoKey,
 		CommitSha:     cfg.CommitSHA,
 		FeatureSha:    cfg.ConfigSHA,
@@ -123,7 +123,7 @@ func (b *backendStore) registerWithBackoff(ctx context.Context) (string, error) 
 		RepoKey:       b.repoKey,
 		NamespaceList: []string{}, // register all namespaces
 	})
-	req.Header().Set(lekkoAPIKeyHeader, b.apikey)
+	req.Header().Set(lekkoAPIKeyHeader, b.apiKey)
 	var resp *connect.Response[backendv1beta1.RegisterClientResponse]
 	var err error
 	op := func() error {
@@ -148,7 +148,7 @@ func (b *backendStore) updateStoreWithBackoff(ctx context.Context) (bool, error)
 		RepoKey:    b.repoKey,
 		SessionKey: b.sessionKey,
 	})
-	req.Header().Set(lekkoAPIKeyHeader, b.apikey)
+	req.Header().Set(lekkoAPIKeyHeader, b.apiKey)
 	var contents *backendv1beta1.GetRepositoryContentsResponse
 	op := func() error {
 		resp, err := b.distClient.GetRepositoryContents(ctx, req)
@@ -172,7 +172,7 @@ func (b *backendStore) shouldUpdateStore(ctx context.Context) (bool, error) {
 		RepoKey:    b.repoKey,
 		SessionKey: b.sessionKey,
 	})
-	req.Header().Set(lekkoAPIKeyHeader, b.apikey)
+	req.Header().Set(lekkoAPIKeyHeader, b.apiKey)
 	resp, err := b.distClient.GetRepositoryVersion(ctx, req)
 	if err != nil {
 		return false, errors.Wrap(err, "failed to get repository version")
