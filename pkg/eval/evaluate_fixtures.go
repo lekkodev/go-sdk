@@ -15,11 +15,14 @@
 package eval
 
 import (
+	"fmt"
+
 	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	featurev1beta1 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/feature/v1beta1"
-	"github.com/lekkodev/rules/pkg/parser"
+	rulesv1beta3 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/rules/v1beta3"
 )
 
 func NewBasicFeatureOnBeta2() *featurev1beta1.Feature {
@@ -108,10 +111,6 @@ func NewRuleLangContainsUserID() string {
 	return "user_id IN [1, 2]"
 }
 
-func NewRuleLangInvalid() string {
-	return "user_id IN (1, 2)"
-}
-
 func NewComplexTreeFeature() *featurev1beta1.Feature {
 	return &featurev1beta1.Feature{
 		Key: "complex-tree",
@@ -127,14 +126,62 @@ func NewComplexTreeFeature() *featurev1beta1.Feature {
 }
 
 func genConstraint(ruleStr string, value *anypb.Any, constraints ...*featurev1beta1.Constraint) *featurev1beta1.Constraint {
-	ruleASTV3, err := parser.BuildASTV3(ruleStr)
-	if err != nil {
-		panic(err)
+	rulesMap := rulesMap()
+	ast, ok := rulesMap[ruleStr]
+	if !ok {
+		panic(fmt.Sprintf("ast mapping not found for rule '%s'", ruleStr))
 	}
 	return &featurev1beta1.Constraint{
 		Rule:        ruleStr,
-		RuleAstNew:  ruleASTV3,
+		RuleAstNew:  ast,
 		Value:       value,
 		Constraints: constraints,
 	}
+}
+
+func rulesMap() map[string]*rulesv1beta3.Rule {
+	ret := make(map[string]*rulesv1beta3.Rule)
+	ret["a == 1"] = atom("a", "==", structpb.NewNumberValue(1))
+	ret["a > 10"] = atom("a", ">", structpb.NewNumberValue(10))
+	ret["a > 5"] = atom("a", ">", structpb.NewNumberValue(5))
+	ret["user_id == 1"] = atom("user_id", "==", structpb.NewNumberValue(1))
+	ret["user_id IN [1, 2]"] = atom("user_id", "IN", newValue([]interface{}{1, 2}))
+	ret["x IN [\"a\", \"b\"]"] = atom("x", "IN", newValue([]interface{}{"a", "b"}))
+	ret["x == \"c\""] = atom("x", "==", newValue("c"))
+	return ret
+}
+
+func atom(ctxKey, operator string, cmpValue *structpb.Value) *rulesv1beta3.Rule {
+	return &rulesv1beta3.Rule{
+		Rule: &rulesv1beta3.Rule_Atom{
+			Atom: &rulesv1beta3.Atom{
+				ContextKey:         ctxKey,
+				ComparisonValue:    cmpValue,
+				ComparisonOperator: operatorFromString(operator),
+			},
+		},
+	}
+}
+
+func operatorFromString(op string) rulesv1beta3.ComparisonOperator {
+	switch op {
+	case "==":
+		return rulesv1beta3.ComparisonOperator_COMPARISON_OPERATOR_EQUALS
+	case ">":
+		return rulesv1beta3.ComparisonOperator_COMPARISON_OPERATOR_GREATER_THAN
+	case "<":
+		return rulesv1beta3.ComparisonOperator_COMPARISON_OPERATOR_LESS_THAN
+	case "IN":
+		return rulesv1beta3.ComparisonOperator_COMPARISON_OPERATOR_CONTAINED_WITHIN
+	default:
+		panic(fmt.Sprintf("operator not handled '%s'", op))
+	}
+}
+
+func newValue(from interface{}) *structpb.Value {
+	val, err := structpb.NewValue(from)
+	if err != nil {
+		panic(err)
+	}
+	return val
 }
