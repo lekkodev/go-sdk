@@ -100,7 +100,7 @@ func (s *store) update(contents *backendv1beta1.GetRepositoryContentsResponse) (
 	if !ok {
 		return false, nil
 	}
-	if err := req.hash(); err != nil {
+	if err := req.calculateContentHash(); err != nil {
 		return false, err
 	}
 	s.configs = newConfigs
@@ -137,7 +137,7 @@ func (s *store) shouldUpdateUnsafe(req *updateRequest) (bool, error) {
 	if req.contents.GetCommitSha() != s.commitSHA {
 		return true, nil
 	}
-	if err := req.hash(); err != nil {
+	if err := req.calculateContentHash(); err != nil {
 		return false, err
 	}
 	return *req.contentHash != s.contentHash, nil
@@ -174,7 +174,7 @@ type updateRequest struct {
 	contentHash *string
 }
 
-func (ur *updateRequest) hash() error {
+func (ur *updateRequest) calculateContentHash() error {
 	if ur.contentHash != nil {
 		return nil
 	}

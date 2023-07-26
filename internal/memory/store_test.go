@@ -27,7 +27,7 @@ func TestHashUpdateRequest(t *testing.T) {
 	req := &updateRequest{
 		contents: testdata.RepositoryContents(),
 	}
-	require.NoError(t, req.hash())
+	require.NoError(t, req.calculateContentHash())
 	require.NotNil(t, req.contentHash)
 	expected := *req.contentHash
 	bytes, err := proto.MarshalOptions{Deterministic: true}.Marshal(req.contents)
