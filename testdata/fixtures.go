@@ -15,6 +15,7 @@
 package testdata
 
 import (
+	"fmt"
 	"strings"
 
 	backendv1beta1 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/backend/v1beta1"
@@ -93,5 +94,36 @@ func Feature(ft featurev1beta1.FeatureType, value any) *backendv1beta1.Feature {
 			},
 			Type: ft,
 		},
+	}
+}
+
+func Namespace(name string) *backendv1beta1.Namespace {
+	return &backendv1beta1.Namespace{
+		Name: name,
+		Features: []*backendv1beta1.Feature{
+			{
+				Name: "example",
+				Sha:  "e5a024dd8bf777c3a23ccf1da21fa29aebc5bf28",
+				Feature: &featurev1beta1.Feature{
+					Key:         "example",
+					Description: "an example configuration",
+					Tree: &featurev1beta1.Tree{
+						Default: ValToAny(featurev1beta1.FeatureType_FEATURE_TYPE_BOOL, true),
+					},
+					Type: featurev1beta1.FeatureType_FEATURE_TYPE_BOOL,
+				},
+			},
+		},
+	}
+}
+
+func RepositoryContents() *backendv1beta1.GetRepositoryContentsResponse {
+	var namespaces []*backendv1beta1.Namespace
+	for i := 0; i < 200; i++ {
+		namespaces = append(namespaces, Namespace(fmt.Sprintf("%d", i)))
+	}
+	return &backendv1beta1.GetRepositoryContentsResponse{
+		CommitSha:  "0a06da7c1c4a37bed9ff974009265da5196e81ca",
+		Namespaces: namespaces,
 	}
 }

@@ -182,8 +182,12 @@ func (ur *updateRequest) hash() error {
 	if err != nil {
 		return err
 	}
-	shaBytes := sha256.Sum256(bytes)
-	sha := hex.EncodeToString(shaBytes[:])
+	sha := hashContentsSHA256(bytes)
 	ur.contentHash = &sha
 	return nil
+}
+
+func hashContentsSHA256(bytes []byte) string {
+	shaBytes := sha256.Sum256(bytes)
+	return hex.EncodeToString(shaBytes[:])
 }
