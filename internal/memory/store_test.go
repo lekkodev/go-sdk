@@ -17,7 +17,28 @@ package memory
 import (
 	"fmt"
 	"testing"
+
+	"github.com/lekkodev/go-sdk/testdata"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
+
+func TestHashUpdateRequest(t *testing.T) {
+	req := &updateRequest{
+		contents: testdata.RepositoryContents(),
+	}
+	require.NoError(t, req.calculateContentHash())
+	require.NotNil(t, req.contentHash)
+	expected := *req.contentHash
+	bytes, err := proto.MarshalOptions{Deterministic: true}.Marshal(req.contents)
+	require.NoError(t, err)
+	// test the determinism of the hash
+	for i := 0; i < 10; i++ {
+		require.Equal(t, expected, hashContentsSHA256(bytes))
+	}
+}
+
+// Benchmarks
 
 type configKey struct {
 	namespace, config string

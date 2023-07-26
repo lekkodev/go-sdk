@@ -163,8 +163,7 @@ func (b *backendStore) updateStoreWithBackoff(ctx context.Context) (bool, error)
 	if err := backoff.Retry(op, exp); err != nil {
 		return false, err
 	}
-	updated := b.store.update(contents)
-	return updated, nil
+	return b.store.update(contents)
 }
 
 func (b *backendStore) shouldUpdateStore(ctx context.Context) (bool, error) {
@@ -177,8 +176,7 @@ func (b *backendStore) shouldUpdateStore(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, errors.Wrap(err, "failed to get repository version")
 	}
-	should := b.store.shouldUpdate(resp.Msg.GetCommitSha())
-	return should, nil
+	return b.store.getCommitSha() != resp.Msg.GetCommitSha(), nil
 }
 
 func (b *backendStore) loop(ctx context.Context) {

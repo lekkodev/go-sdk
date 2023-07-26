@@ -140,7 +140,7 @@ func (g *gitStore) load(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return g.store.update(contents), nil
+	return g.store.update(contents)
 }
 
 func (g *gitStore) startWatcher(ctx context.Context) error {

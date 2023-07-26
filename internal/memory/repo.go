@@ -71,20 +71,7 @@ func (r *repository) getCommitSha() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	baseSHA := ref.Hash().String()
-	wt, err := r.Worktree()
-	if err != nil {
-		return "", err
-	}
-	status, err := wt.Status()
-	if err != nil {
-		return "", err
-	}
-	var suffix string
-	if !status.IsClean() {
-		suffix = "-dirty"
-	}
-	return fmt.Sprintf("%s%s", baseSHA, suffix), nil
+	return ref.Hash().String(), nil
 }
 
 type RootConfigRepoMetadata struct {

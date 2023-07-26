@@ -34,7 +34,7 @@ func main() {
 	flag.Parse()
 
 	var provider client.Provider
-	if mode != "static" && key == "" {
+	if mode != "gitlocal" && key == "" {
 		log.Fatal("Lekko API key not provided. Exiting...")
 	}
 	var err error
