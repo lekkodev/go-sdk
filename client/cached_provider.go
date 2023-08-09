@@ -49,7 +49,7 @@ func CachedAPIProvider(ctx context.Context, apiKey, url string, repoKey Reposito
 	if err != nil {
 		return nil, err
 	}
-	return &inMemoryProvider{
+	return &cachedProvider{
 		store: backend,
 	}, nil
 }
@@ -74,7 +74,7 @@ func CachedGitProvider(ctx context.Context, path, apiKey, url string, repoKey Re
 	if err != nil {
 		return nil, err
 	}
-	return &inMemoryProvider{
+	return &cachedProvider{
 		store: gitStore,
 	}, nil
 }
@@ -92,51 +92,51 @@ func LocalCachedGitProvider(ctx context.Context, path string, repoKey Repository
 	if err != nil {
 		return nil, err
 	}
-	return &inMemoryProvider{
+	return &cachedProvider{
 		store: gitStore,
 	}, nil
 }
 
-type inMemoryProvider struct {
+type cachedProvider struct {
 	store memory.Store
 }
 
 // Close implements Provider.
-func (im *inMemoryProvider) Close(ctx context.Context) error {
-	return im.store.Close(ctx)
+func (cp *cachedProvider) Close(ctx context.Context) error {
+	return cp.store.Close(ctx)
 }
 
 // GetBoolFeature implements Provider.
-func (im *inMemoryProvider) GetBoolFeature(ctx context.Context, key string, namespace string) (bool, error) {
+func (cp *cachedProvider) GetBoolFeature(ctx context.Context, key string, namespace string) (bool, error) {
 	dest := &wrapperspb.BoolValue{}
-	if err := im.store.Evaluate(key, namespace, fromContext(ctx), dest); err != nil {
+	if err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest); err != nil {
 		return false, err
 	}
 	return dest.GetValue(), nil
 }
 
 // GetFloatFeature implements Provider.
-func (im *inMemoryProvider) GetFloatFeature(ctx context.Context, key string, namespace string) (float64, error) {
+func (cp *cachedProvider) GetFloatFeature(ctx context.Context, key string, namespace string) (float64, error) {
 	dest := &wrapperspb.DoubleValue{}
-	if err := im.store.Evaluate(key, namespace, fromContext(ctx), dest); err != nil {
+	if err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest); err != nil {
 		return 0, err
 	}
 	return dest.GetValue(), nil
 }
 
 // GetIntFeature implements Provider.
-func (im *inMemoryProvider) GetIntFeature(ctx context.Context, key string, namespace string) (int64, error) {
+func (cp *cachedProvider) GetIntFeature(ctx context.Context, key string, namespace string) (int64, error) {
 	dest := &wrapperspb.Int64Value{}
-	if err := im.store.Evaluate(key, namespace, fromContext(ctx), dest); err != nil {
+	if err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest); err != nil {
 		return 0, err
 	}
 	return dest.GetValue(), nil
 }
 
 // GetJSONFeature implements Provider.
-func (im *inMemoryProvider) GetJSONFeature(ctx context.Context, key string, namespace string, result interface{}) error {
+func (cp *cachedProvider) GetJSONFeature(ctx context.Context, key string, namespace string, result interface{}) error {
 	dest := &structpb.Value{}
-	if err := im.store.Evaluate(key, namespace, fromContext(ctx), dest); err != nil {
+	if err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest); err != nil {
 		return err
 	}
 	bytes, err := dest.MarshalJSON()
@@ -150,14 +150,14 @@ func (im *inMemoryProvider) GetJSONFeature(ctx context.Context, key string, name
 }
 
 // GetProtoFeature implements Provider.
-func (im *inMemoryProvider) GetProtoFeature(ctx context.Context, key string, namespace string, result protoreflect.ProtoMessage) error {
-	return im.store.Evaluate(key, namespace, fromContext(ctx), result)
+func (cp *cachedProvider) GetProtoFeature(ctx context.Context, key string, namespace string, result protoreflect.ProtoMessage) error {
+	return cp.store.Evaluate(key, namespace, fromContext(ctx), result)
 }
 
 // GetStringFeature implements Provider.
-func (im *inMemoryProvider) GetStringFeature(ctx context.Context, key string, namespace string) (string, error) {
+func (cp *cachedProvider) GetStringFeature(ctx context.Context, key string, namespace string) (string, error) {
 	dest := &wrapperspb.StringValue{}
-	if err := im.store.Evaluate(key, namespace, fromContext(ctx), dest); err != nil {
+	if err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest); err != nil {
 		return "", err
 	}
 	return dest.GetValue(), nil

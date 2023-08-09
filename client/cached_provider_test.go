@@ -46,7 +46,7 @@ func makeConfigs() map[string]*anypb.Any {
 }
 
 func TestInMemoryProviderSuccess(t *testing.T) {
-	im := &inMemoryProvider{
+	im := &cachedProvider{
 		store: &testStore{
 			configs: makeConfigs(),
 		},
@@ -77,7 +77,7 @@ func TestInMemoryProviderSuccess(t *testing.T) {
 }
 
 func TestInMemoryProviderTypeMismatch(t *testing.T) {
-	im := &inMemoryProvider{
+	im := &cachedProvider{
 		store: &testStore{
 			configs: makeConfigs(),
 		},
@@ -99,7 +99,7 @@ func TestInMemoryProviderTypeMismatch(t *testing.T) {
 }
 
 func TestInMemoryProviderMissingFeature(t *testing.T) {
-	im := &inMemoryProvider{
+	im := &cachedProvider{
 		store: &testStore{
 			configs: makeConfigs(),
 		},
@@ -111,7 +111,7 @@ func TestInMemoryProviderMissingFeature(t *testing.T) {
 }
 
 func TestInMemoryProviderCloseError(t *testing.T) {
-	im := &inMemoryProvider{
+	im := &cachedProvider{
 		store: &testStore{
 			configs:  makeConfigs(),
 			closeErr: errors.Errorf("close error"),
