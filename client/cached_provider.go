@@ -31,10 +31,10 @@ const (
 )
 
 // Constructs a provider that refreshes configs from Lekko backend repeatedly in the background,
-// caching the configs in-memory. url is optional, it defaults to Lekko backend.
-func CachedAPIProvider(ctx context.Context, apiKey, url string, repoKey RepositoryKey, updateInterval time.Duration) (Provider, error) {
-	if len(apiKey) == 0 {
-		return nil, errors.New("api key is required")
+// caching the configs in-memory. ConnectionOptions is a required argument.
+func CachedAPIProvider(ctx context.Context, co *ConnectionOptions, repoKey RepositoryKey, updateInterval time.Duration) (Provider, error) {
+	if err := co.validate(true); err != nil {
+		return nil, err
 	}
 	if len(repoKey.OwnerName) == 0 || len(repoKey.RepoName) == 0 {
 		return nil, errors.New("missing repo key information")
@@ -42,10 +42,7 @@ func CachedAPIProvider(ctx context.Context, apiKey, url string, repoKey Reposito
 	if updateInterval.Seconds() < minUpdateInterval.Seconds() {
 		return nil, errors.Errorf("update interval too small, minimum %v", minUpdateInterval)
 	}
-	if len(url) == 0 {
-		url = defaultAPIURL
-	}
-	backend, err := memory.NewBackendStore(ctx, apiKey, url, repoKey.OwnerName, repoKey.RepoName, updateInterval)
+	backend, err := memory.NewBackendStore(ctx, co.getAPIKey(), co.getURL(), repoKey.OwnerName, repoKey.RepoName, updateInterval)
 	if err != nil {
 		return nil, err
 	}
@@ -57,20 +54,16 @@ func CachedAPIProvider(ctx context.Context, apiKey, url string, repoKey Reposito
 // Reads configuration from a git repository on-disk. This provider will remain up to date with
 // changes made to the git repository on-disk. If on-disk contents change, this provider's internal
 // state will be updated without restart.
-// This provider requires an api key to communicate with Lekko.
-// url is optional, it defaults to Lekko backend.
+// If ConnectionOptions are provided, this provider will send metrics back to lekko.
 // Provide the path to the root of the repository. 'path/.git/' should be a valid directory.
-func CachedGitProvider(ctx context.Context, path, apiKey, url string, repoKey RepositoryKey) (Provider, error) {
-	if len(apiKey) == 0 {
-		return nil, errors.New("api key is required")
+func CachedGitProvider(ctx context.Context, path string, co *ConnectionOptions, repoKey RepositoryKey) (Provider, error) {
+	if err := co.validate(false); err != nil {
+		return nil, err
 	}
 	if len(repoKey.OwnerName) == 0 || len(repoKey.RepoName) == 0 {
 		return nil, errors.New("missing repo key information")
 	}
-	if len(url) == 0 {
-		url = defaultAPIURL
-	}
-	gitStore, err := memory.NewGitStore(ctx, apiKey, url, repoKey.OwnerName, repoKey.RepoName, path)
+	gitStore, err := memory.NewGitStore(ctx, co.getAPIKey(), co.getURL(), repoKey.OwnerName, repoKey.RepoName, path)
 	if err != nil {
 		return nil, err
 	}
@@ -79,22 +72,39 @@ func CachedGitProvider(ctx context.Context, path, apiKey, url string, repoKey Re
 	}, nil
 }
 
-// Reads configuration from a git repository on-disk. This provider will remain up to date with
-// changes made to the git repository on-disk. If on-disk contents change, this provider's internal
-// state will be updated without restart.
-// This provider does not require an api key and can be used while developing locally.
-// Provide the path to the root of the repository. 'path/.git/' should be a valid directory.
-func LocalCachedGitProvider(ctx context.Context, path string, repoKey RepositoryKey) (Provider, error) {
-	if len(repoKey.OwnerName) == 0 || len(repoKey.RepoName) == 0 {
-		return nil, errors.New("missing repo key information")
+// Arguments needed to connect to Lekko.
+type ConnectionOptions struct {
+	// Lekko API key (lekko_*****)
+	APIKey string
+	// URL to connect to. If empty, connects to Lekko's backend.
+	URL string
+}
+
+func (co *ConnectionOptions) validate(required bool) error {
+	if !required && co == nil {
+		return nil
 	}
-	gitStore, err := memory.NewGitStore(ctx, "", "", repoKey.OwnerName, repoKey.RepoName, path)
-	if err != nil {
-		return nil, err
+	if len(co.APIKey) == 0 {
+		return errors.New("api key is required")
 	}
-	return &cachedProvider{
-		store: gitStore,
-	}, nil
+	if len(co.URL) == 0 {
+		co.URL = defaultAPIURL
+	}
+	return nil
+}
+
+func (co *ConnectionOptions) getAPIKey() string {
+	if co == nil {
+		return ""
+	}
+	return co.APIKey
+}
+
+func (co *ConnectionOptions) getURL() string {
+	if co == nil {
+		return ""
+	}
+	return co.URL
 }
 
 type cachedProvider struct {

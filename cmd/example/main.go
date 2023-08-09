@@ -69,11 +69,17 @@ func getProvider(ctx context.Context, key, mode, path, owner, repo string) (clie
 	case "api":
 		provider, err = client.ConnectAPIProvider(ctx, key, rk)
 	case "cached":
-		provider, err = client.CachedAPIProvider(ctx, key, "", *rk, 10*time.Second)
+		provider, err = client.CachedAPIProvider(ctx, &client.ConnectionOptions{
+			APIKey: key,
+			URL:    "",
+		}, *rk, 10*time.Second)
 	case "git":
-		provider, err = client.CachedGitProvider(ctx, path, key, "", *rk)
+		provider, err = client.CachedGitProvider(ctx, path, &client.ConnectionOptions{
+			APIKey: key,
+			URL:    "",
+		}, *rk)
 	case "gitlocal":
-		provider, err = client.LocalCachedGitProvider(ctx, path, *rk)
+		provider, err = client.CachedGitProvider(ctx, path, nil, *rk)
 	default:
 		err = errors.Errorf("unknown mode %s", mode)
 	}
