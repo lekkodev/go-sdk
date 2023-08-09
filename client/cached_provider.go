@@ -56,7 +56,7 @@ func CachedAPIProvider(ctx context.Context, co *ConnectionOptions, repoKey Repos
 // state will be updated without restart.
 // If ConnectionOptions are provided, this provider will send metrics back to lekko.
 // Provide the path to the root of the repository. 'path/.git/' should be a valid directory.
-func CachedGitProvider(ctx context.Context, path string, co *ConnectionOptions, repoKey RepositoryKey) (Provider, error) {
+func CachedGitFsProvider(ctx context.Context, path string, co *ConnectionOptions, repoKey RepositoryKey) (Provider, error) {
 	if err := co.validate(false); err != nil {
 		return nil, err
 	}
