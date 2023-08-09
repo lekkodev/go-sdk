@@ -199,9 +199,11 @@ func (g *gitStore) Close(ctx context.Context) error {
 	// wait for background work to complete
 	g.wg.Wait()
 	if g.distClient != nil {
-		if _, err := g.distClient.DeregisterClient(ctx, connect.NewRequest(&backendv1beta1.DeregisterClientRequest{
+		req := connect.NewRequest(&backendv1beta1.DeregisterClientRequest{
 			SessionKey: g.sessionKey,
-		})); err != nil {
+		})
+		req.Header().Set(lekkoAPIKeyHeader, g.apiKey)
+		if _, err := g.distClient.DeregisterClient(ctx, req); err != nil {
 			log.Printf("error deregistering lekko client: %v", err)
 		}
 	}

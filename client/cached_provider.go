@@ -31,8 +31,8 @@ const (
 )
 
 // Constructs a provider that refreshes configs from Lekko backend repeatedly in the background,
-// caching the configs in-memory.
-func BackendInMemoryProvider(ctx context.Context, apiKey string, repoKey RepositoryKey, updateInterval time.Duration) (Provider, error) {
+// caching the configs in-memory. url is optional, it defaults to Lekko backend.
+func CachedAPIProvider(ctx context.Context, apiKey, url string, repoKey RepositoryKey, updateInterval time.Duration) (Provider, error) {
 	if len(apiKey) == 0 {
 		return nil, errors.New("api key is required")
 	}
@@ -42,7 +42,10 @@ func BackendInMemoryProvider(ctx context.Context, apiKey string, repoKey Reposit
 	if updateInterval.Seconds() < minUpdateInterval.Seconds() {
 		return nil, errors.Errorf("update interval too small, minimum %v", minUpdateInterval)
 	}
-	backend, err := memory.NewBackendStore(ctx, apiKey, defaultAPIURL, repoKey.OwnerName, repoKey.RepoName, updateInterval)
+	if len(url) == 0 {
+		url = defaultAPIURL
+	}
+	backend, err := memory.NewBackendStore(ctx, apiKey, url, repoKey.OwnerName, repoKey.RepoName, updateInterval)
 	if err != nil {
 		return nil, err
 	}
@@ -55,15 +58,19 @@ func BackendInMemoryProvider(ctx context.Context, apiKey string, repoKey Reposit
 // changes made to the git repository on-disk. If on-disk contents change, this provider's internal
 // state will be updated without restart.
 // This provider requires an api key to communicate with Lekko.
+// url is optional, it defaults to Lekko backend.
 // Provide the path to the root of the repository. 'path/.git/' should be a valid directory.
-func GitInMemoryProvider(ctx context.Context, path, apiKey string, repoKey RepositoryKey) (Provider, error) {
+func CachedGitProvider(ctx context.Context, path, apiKey, url string, repoKey RepositoryKey) (Provider, error) {
 	if len(apiKey) == 0 {
 		return nil, errors.New("api key is required")
 	}
 	if len(repoKey.OwnerName) == 0 || len(repoKey.RepoName) == 0 {
 		return nil, errors.New("missing repo key information")
 	}
-	gitStore, err := memory.NewGitStore(ctx, apiKey, defaultAPIURL, repoKey.OwnerName, repoKey.RepoName, path)
+	if len(url) == 0 {
+		url = defaultAPIURL
+	}
+	gitStore, err := memory.NewGitStore(ctx, apiKey, url, repoKey.OwnerName, repoKey.RepoName, path)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +84,7 @@ func GitInMemoryProvider(ctx context.Context, path, apiKey string, repoKey Repos
 // state will be updated without restart.
 // This provider does not require an api key and can be used while developing locally.
 // Provide the path to the root of the repository. 'path/.git/' should be a valid directory.
-func GitLocalInMemoryProvider(ctx context.Context, path string, repoKey RepositoryKey) (Provider, error) {
+func LocalCachedGitProvider(ctx context.Context, path string, repoKey RepositoryKey) (Provider, error) {
 	if len(repoKey.OwnerName) == 0 || len(repoKey.RepoName) == 0 {
 		return nil, errors.New("missing repo key information")
 	}
