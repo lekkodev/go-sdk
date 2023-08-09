@@ -93,9 +93,11 @@ func (b *backendStore) Close(ctx context.Context) error {
 	b.eb.close(ctx)
 	// wait for background work to complete
 	b.wg.Wait()
-	_, err := b.distClient.DeregisterClient(ctx, connect.NewRequest(&backendv1beta1.DeregisterClientRequest{
+	req := connect.NewRequest(&backendv1beta1.DeregisterClientRequest{
 		SessionKey: b.sessionKey,
-	}))
+	})
+	req.Header().Set(lekkoAPIKeyHeader, b.apiKey)
+	_, err := b.distClient.DeregisterClient(ctx, req)
 	return err
 }
 

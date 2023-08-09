@@ -25,12 +25,14 @@ import (
 )
 
 func main() {
-	var key, mode, namespace, config, path string
+	var key, mode, namespace, config, path, owner, repo string
 	flag.StringVar(&key, "lekko-apikey", "", "API key for lekko given to your organization")
-	flag.StringVar(&mode, "mode", "api", "Mode to start the sdk in (api, backend, git, gitlocal)")
+	flag.StringVar(&mode, "mode", "api", "Mode to start the sdk in (api, cached, git, gitlocal)")
 	flag.StringVar(&namespace, "namespace", "default", "namespace to request the config from")
 	flag.StringVar(&config, "config", "hello", "name of the config to request")
 	flag.StringVar(&path, "path", "", "path to config repo if operating in git mode")
+	flag.StringVar(&owner, "owner", "lekkodev", "name of the repository's github owner")
+	flag.StringVar(&repo, "repo", "example", "name of the repository on github")
 	flag.Parse()
 
 	var provider client.Provider
@@ -40,7 +42,7 @@ func main() {
 	var err error
 	ctx, cancelF := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelF()
-	provider, err = getProvider(ctx, key, mode, path)
+	provider, err = getProvider(ctx, key, mode, path, owner, repo)
 	if err != nil {
 		log.Fatalf("error when starting in %s mode: %v\n", mode, err)
 	}
@@ -56,22 +58,28 @@ func main() {
 	log.Printf("%s/%s [%T]: %v\n", namespace, config, result, result)
 }
 
-func getProvider(ctx context.Context, key, mode, path string) (client.Provider, error) {
+func getProvider(ctx context.Context, key, mode, path, owner, repo string) (client.Provider, error) {
 	rk := &client.RepositoryKey{
-		OwnerName: "lekkodev", // update me
-		RepoName:  "example",  // update me
+		OwnerName: owner,
+		RepoName:  repo,
 	}
 	var provider client.Provider
 	var err error
 	switch mode {
 	case "api":
 		provider, err = client.ConnectAPIProvider(ctx, key, rk)
-	case "backend":
-		provider, err = client.BackendInMemoryProvider(ctx, key, *rk, 10*time.Second)
+	case "cached":
+		provider, err = client.CachedAPIProvider(ctx, &client.ConnectionOptions{
+			APIKey: key,
+			URL:    "",
+		}, *rk, 10*time.Second)
 	case "git":
-		provider, err = client.GitInMemoryProvider(ctx, path, key, *rk)
+		provider, err = client.CachedGitFsProvider(ctx, path, &client.ConnectionOptions{
+			APIKey: key,
+			URL:    "",
+		}, *rk)
 	case "gitlocal":
-		provider, err = client.GitLocalInMemoryProvider(ctx, path, *rk)
+		provider, err = client.CachedGitFsProvider(ctx, path, nil, *rk)
 	default:
 		err = errors.Errorf("unknown mode %s", mode)
 	}
