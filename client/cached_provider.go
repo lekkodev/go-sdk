@@ -32,7 +32,13 @@ const (
 
 // Constructs a provider that refreshes configs from Lekko backend repeatedly in the background,
 // caching the configs in-memory. ConnectionOptions is a required argument.
-func CachedAPIProvider(ctx context.Context, co *ConnectionOptions, repoKey RepositoryKey, updateInterval time.Duration) (Provider, error) {
+func CachedAPIProvider(
+	ctx context.Context,
+	co *ConnectionOptions,
+	repoKey RepositoryKey,
+	updateInterval time.Duration,
+	so *ServerOptions,
+) (Provider, error) {
 	if err := co.validate(true); err != nil {
 		return nil, err
 	}
@@ -42,7 +48,14 @@ func CachedAPIProvider(ctx context.Context, co *ConnectionOptions, repoKey Repos
 	if updateInterval.Seconds() < minUpdateInterval.Seconds() {
 		return nil, errors.Errorf("update interval too small, minimum %v", minUpdateInterval)
 	}
-	backend, err := memory.NewBackendStore(ctx, co.getAPIKey(), co.getURL(), repoKey.OwnerName, repoKey.RepoName, updateInterval)
+	if err := so.validate(); err != nil {
+		return nil, err
+	}
+	backend, err := memory.NewBackendStore(
+		ctx,
+		co.getAPIKey(), co.getURL(),
+		repoKey.OwnerName, repoKey.RepoName,
+		updateInterval, so.getPort())
 	if err != nil {
 		return nil, err
 	}
@@ -56,14 +69,28 @@ func CachedAPIProvider(ctx context.Context, co *ConnectionOptions, repoKey Repos
 // state will be updated without restart.
 // If ConnectionOptions are provided, this provider will send metrics back to lekko.
 // Provide the path to the root of the repository. 'path/.git/' should be a valid directory.
-func CachedGitFsProvider(ctx context.Context, path string, co *ConnectionOptions, repoKey RepositoryKey) (Provider, error) {
+func CachedGitFsProvider(
+	ctx context.Context,
+	path string,
+	co *ConnectionOptions,
+	repoKey RepositoryKey,
+	so *ServerOptions,
+) (Provider, error) {
 	if err := co.validate(false); err != nil {
 		return nil, err
 	}
 	if len(repoKey.OwnerName) == 0 || len(repoKey.RepoName) == 0 {
 		return nil, errors.New("missing repo key information")
 	}
-	gitStore, err := memory.NewGitStore(ctx, co.getAPIKey(), co.getURL(), repoKey.OwnerName, repoKey.RepoName, path)
+	if err := so.validate(); err != nil {
+		return nil, err
+	}
+	gitStore, err := memory.NewGitStore(
+		ctx,
+		co.getAPIKey(), co.getURL(),
+		repoKey.OwnerName, repoKey.RepoName,
+		path, so.getPort(),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -105,6 +132,30 @@ func (co *ConnectionOptions) getURL() string {
 		return ""
 	}
 	return co.URL
+}
+
+// Arguments needed to start a local web server for debugging.
+// Server will be started on 0.0.0.0:port.
+type ServerOptions struct {
+	// Port must be >= 0
+	Port int32
+}
+
+func (so *ServerOptions) validate() error {
+	if so == nil {
+		return nil
+	}
+	if so.Port <= 0 {
+		return errors.New("server port must be greater than 0")
+	}
+	return nil
+}
+
+func (so *ServerOptions) getPort() int32 {
+	if so == nil {
+		return 0
+	}
+	return so.Port
 }
 
 type cachedProvider struct {
