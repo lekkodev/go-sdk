@@ -48,7 +48,7 @@ func ConnectAPIProvider(ctx context.Context, apiKey string, rk *RepositoryKey, o
 	}
 	withFallbackURL(defaultAPIURL).apply(cfg)
 	WithAPIKey(apiKey).apply(cfg)
-	withRepositoryKey(rk)
+	withRepositoryKey(rk).apply(cfg)
 	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func ConnectSidecarProvider(ctx context.Context, url string, rk *RepositoryKey, 
 	}
 	WithURL(url).apply(cfg)
 	withFallbackURL(defaultSidecarURL).apply(cfg)
-	withRepositoryKey(rk)
+	withRepositoryKey(rk).apply(cfg)
 	if err := cfg.validate(); err != nil {
 		return nil, err
 	}

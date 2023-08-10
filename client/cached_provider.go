@@ -43,7 +43,7 @@ func CachedAPIProvider(
 		opt.apply(cfg)
 	}
 	withFallbackURL(defaultAPIURL).apply(cfg)
-	withRepositoryKey(rk)
+	withRepositoryKey(rk).apply(cfg)
 	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
@@ -75,8 +75,10 @@ func CachedGitFsProvider(
 	for _, opt := range opts {
 		opt.apply(cfg)
 	}
-	withRepositoryKey(repoKey)
-	withFallbackURL(defaultAPIURL)
+	withRepositoryKey(repoKey).apply(cfg)
+	if len(cfg.apiKey) > 0 {
+		withFallbackURL(defaultAPIURL).apply(cfg)
+	}
 	if err := cfg.validate(); err != nil {
 		return nil, err
 	}

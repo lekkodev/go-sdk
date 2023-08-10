@@ -27,6 +27,7 @@ import (
 func main() {
 	var key, mode, namespace, config, path, owner, repo string
 	var port int
+	var sleep time.Duration
 	flag.StringVar(&key, "lekko-apikey", "", "API key for lekko given to your organization")
 	flag.StringVar(&mode, "mode", "api", "Mode to start the sdk in (api, cached, git, gitlocal)")
 	flag.StringVar(&namespace, "namespace", "default", "namespace to request the config from")
@@ -35,12 +36,10 @@ func main() {
 	flag.StringVar(&owner, "owner", "lekkodev", "name of the repository's github owner")
 	flag.StringVar(&repo, "repo", "example", "name of the repository on github")
 	flag.IntVar(&port, "port", 0, "port to serve web server on")
+	flag.DurationVar(&sleep, "sleep", 0, "optional sleep duration to invoke web server")
 	flag.Parse()
 
 	var provider client.Provider
-	if mode != "gitlocal" && key == "" {
-		log.Fatal("Lekko API key not provided. Exiting...")
-	}
 	var err error
 	ctx, cancelF := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelF()
@@ -58,6 +57,7 @@ func main() {
 		log.Fatalf("error retrieving config: %v\n", err)
 	}
 	log.Printf("%s/%s [%T]: %v\n", namespace, config, result, result)
+	time.Sleep(sleep)
 }
 
 func getProvider(ctx context.Context, key, mode, path, owner, repo string, port int) (client.Provider, error) {
