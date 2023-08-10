@@ -171,3 +171,23 @@ func (tds *testDistService) getEventsReceived() []*backendv1beta1.FlagEvaluation
 	defer tds.RUnlock()
 	return tds.events
 }
+
+func TestToContextKeysProto(t *testing.T) {
+	lekkoContext := make(map[string]interface{})
+	lekkoContext["bool"] = true
+	lekkoContext["int"] = 12
+	lekkoContext["int32"] = int32(12)
+	lekkoContext["uint32"] = uint32(12)
+	lekkoContext["float"] = 32.5
+	lekkoContext["float64"] = float64(32.5)
+	lekkoContext["string"] = "foo"
+
+	result := toContextKeysProto(lekkoContext)
+	assert.Contains(t, result, &backendv1beta1.ContextKey{Key: "bool", Type: "bool"})
+	assert.Contains(t, result, &backendv1beta1.ContextKey{Key: "int", Type: "int"})
+	assert.Contains(t, result, &backendv1beta1.ContextKey{Key: "int32", Type: "int"})
+	assert.Contains(t, result, &backendv1beta1.ContextKey{Key: "uint32", Type: "int"})
+	assert.Contains(t, result, &backendv1beta1.ContextKey{Key: "float", Type: "float"})
+	assert.Contains(t, result, &backendv1beta1.ContextKey{Key: "float64", Type: "float"})
+	assert.Contains(t, result, &backendv1beta1.ContextKey{Key: "string", Type: "string"})
+}
