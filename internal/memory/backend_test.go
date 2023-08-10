@@ -62,7 +62,7 @@ func TestBackendStore(t *testing.T) {
 		contents:   repositoryContents(),
 	}
 	ctx := context.Background()
-	b, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, 6)
+	b, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, 6, 0)
 	require.NoError(t, err, "no error during register and init")
 
 	bv := &wrapperspb.BoolValue{}
@@ -99,7 +99,7 @@ func TestBackendStoreRegisterError(t *testing.T) {
 		registerErr: backoff.Permanent(errors.New("registration failed")),
 	}
 	ctx := context.Background()
-	_, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, eventsBatchSize)
+	_, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, eventsBatchSize, 0)
 	require.Error(t, err)
 }
 
@@ -110,7 +110,7 @@ func TestBackendStoreDeregisterError(t *testing.T) {
 		deregisterErr: errors.New("deregistration failed"),
 	}
 	ctx := context.Background()
-	b, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, eventsBatchSize)
+	b, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, eventsBatchSize, 0)
 	require.NoError(t, err)
 
 	require.Error(t, b.Close(ctx))
@@ -123,7 +123,7 @@ func TestBackendStoreGetContentsError(t *testing.T) {
 		getContentsErr: backoff.Permanent(errors.New("get contents failed")),
 	}
 	ctx := context.Background()
-	_, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, eventsBatchSize)
+	_, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, eventsBatchSize, 0)
 	require.Error(t, err)
 }
 

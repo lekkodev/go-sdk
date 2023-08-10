@@ -36,7 +36,7 @@ func TestGitStore(t *testing.T) {
 	ctx := context.Background()
 	storer, fs := setupFS(t)
 
-	gs, err := newGitStore(ctx, "", "lekkodev", "testrepo", storer, fs, nil, 10, false)
+	gs, err := newGitStore(ctx, "", "lekkodev", "testrepo", storer, fs, nil, 10, false, 0)
 	require.NoError(t, err)
 	assert.NotNil(t, gs)
 	assert.NotContains(t, gs.store.getCommitSha(), "dirty", "working directory is clean")

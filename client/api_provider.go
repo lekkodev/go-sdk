@@ -18,7 +18,6 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"fmt"
 	"net"
 	"net/http"
 
@@ -41,16 +40,21 @@ const (
 
 // Fetches configuration directly from Lekko Backend APIs.
 func ConnectAPIProvider(ctx context.Context, apiKey string, rk *RepositoryKey, opts ...ProviderOption) (Provider, error) {
-	if rk == nil {
-		return nil, fmt.Errorf("no repository key provided")
+	cfg := &providerConfig{}
+	for _, opt := range opts {
+		opt.apply(cfg)
+	}
+	// the following options cannot be overridden by opts
+	withFallbackURL(defaultAPIURL).apply(cfg)
+	WithAPIKey(apiKey).apply(cfg)
+	withRepositoryKey(rk).apply(cfg)
+	if err := cfg.validate(); err != nil {
+		return nil, err
 	}
 	provider := &apiProvider{
-		apikey:      apiKey,
-		lekkoClient: clientv1beta1connect.NewConfigurationServiceClient(http.DefaultClient, defaultAPIURL),
-		rk:          rk,
-	}
-	for _, opt := range opts {
-		opt.apply(provider)
+		apikey:      cfg.apiKey,
+		lekkoClient: clientv1beta1connect.NewConfigurationServiceClient(http.DefaultClient, cfg.url),
+		rk:          cfg.repoKey,
 	}
 	if err := provider.register(ctx); err != nil {
 		return nil, err
@@ -63,11 +67,16 @@ func ConnectAPIProvider(ctx context.Context, apiKey string, rk *RepositoryKey, o
 // strongly preferred. A function is returned to close the client. It is also strongly recommended
 // to call this when the program is exiting or the lekko provider is no longer needed.
 func ConnectSidecarProvider(ctx context.Context, url string, rk *RepositoryKey, opts ...ProviderOption) (Provider, error) {
-	if rk == nil {
-		return nil, fmt.Errorf("no repository key provided")
+	cfg := &providerConfig{url: url}
+	for _, opt := range opts {
+		opt.apply(cfg)
 	}
-	if url == "" {
-		url = defaultSidecarURL
+	// the following options cannot be overridden by opts
+	WithURL(url).apply(cfg)
+	withFallbackURL(defaultSidecarURL).apply(cfg)
+	withRepositoryKey(rk).apply(cfg)
+	if err := cfg.validate(); err != nil {
+		return nil, err
 	}
 	// The sidecar exposes the same interface as the backend API, so we can transparently
 	// use the same underlying apiProvider implementation, just with different client config
@@ -81,11 +90,8 @@ func ConnectSidecarProvider(ctx context.Context, url string, rk *RepositoryKey, 
 					return net.Dial(network, addr)
 				},
 			},
-		}, url, connect.WithGRPC()),
-		rk: rk,
-	}
-	for _, opt := range opts {
-		opt.apply(provider)
+		}, cfg.url, connect.WithGRPC()),
+		rk: cfg.repoKey,
 	}
 	if err := provider.registerWithBackoff(ctx); err != nil {
 		return nil, err
@@ -285,18 +291,4 @@ func (a *apiProvider) GetJSONFeature(ctx context.Context, key string, namespace 
 		return errors.Wrapf(err, "failed to unmarshal json into go type %T", result)
 	}
 	return nil
-}
-
-type ProviderOption interface {
-	apply(provider *apiProvider)
-}
-
-// Used to override the default Lekko backend API URL.
-// Only applicable to API provider.
-type URLOption struct {
-	URL string
-}
-
-func (uo *URLOption) apply(provider *apiProvider) {
-	provider.lekkoClient = clientv1beta1connect.NewConfigurationServiceClient(http.DefaultClient, uo.URL)
 }

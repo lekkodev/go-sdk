@@ -38,7 +38,11 @@ import (
 
 // Constructs an in-memory store that fetches configs from a local git repo at the given path.
 // If api key is empty, the store runs in local (offline) mode, and does not communicate with Lekko.
-func NewGitStore(ctx context.Context, apiKey, url, ownerName, repoName, path string) (Store, error) {
+func NewGitStore(
+	ctx context.Context,
+	apiKey, url, ownerName, repoName, path string,
+	port int32,
+) (Store, error) {
 	var distClient backendv1beta1connect.DistributionServiceClient
 	if len(apiKey) > 0 {
 		distClient = backendv1beta1connect.NewDistributionServiceClient(http.DefaultClient, url)
@@ -49,7 +53,13 @@ func NewGitStore(ctx context.Context, apiKey, url, ownerName, repoName, path str
 		return nil, err
 	}
 	storer := filesystem.NewStorage(gitfs, cache.NewObjectLRUDefault())
-	return newGitStore(ctx, apiKey, ownerName, repoName, storer, fs, distClient, eventsBatchSize, true)
+	return newGitStore(
+		ctx,
+		apiKey, ownerName, repoName,
+		storer, fs, distClient,
+		eventsBatchSize, true,
+		port,
+	)
 }
 
 func newGitStore(
@@ -57,12 +67,12 @@ func newGitStore(
 	apiKey, ownerName, repoName string,
 	storer storage.Storer, fs billy.Filesystem,
 	distClient backendv1beta1connect.DistributionServiceClient,
-	eventsBatchSize int, watch bool,
+	eventsBatchSize int, watch bool, port int32,
 ) (*gitStore, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	g := &gitStore{
 		distClient: distClient,
-		store:      newStore(),
+		store:      newStore(ownerName, repoName),
 		repoKey: &backendv1beta1.RepositoryKey{
 			OwnerName: ownerName,
 			RepoName:  repoName,
@@ -85,6 +95,7 @@ func newGitStore(
 	if _, err := g.load(ctx); err != nil {
 		return nil, err
 	}
+	g.server = newSDKServer(port, g.store)
 	if watch {
 		if err := g.startWatcher(ctx); err != nil {
 			return nil, err
@@ -104,6 +115,7 @@ type gitStore struct {
 	fsChan             chan<- notify.EventInfo
 	storer             storage.Storer
 	fs                 billy.Filesystem
+	server             *sdkServer
 }
 
 func (g *gitStore) registerWithBackoff(ctx context.Context) (string, error) {
@@ -191,6 +203,7 @@ func (g *gitStore) Evaluate(key string, namespace string, lekkoContext map[strin
 func (g *gitStore) Close(ctx context.Context) error {
 	// cancel any ongoing background loops
 	g.cancel()
+	g.server.close(ctx)
 	g.eb.close(ctx)
 	if g.fsChan != nil {
 		notify.Stop(g.fsChan)

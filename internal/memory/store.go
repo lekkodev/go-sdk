@@ -22,6 +22,8 @@ import (
 
 	backendv1beta1 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/backend/v1beta1"
 	featurev1beta1 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/feature/v1beta1"
+	clientv1beta1 "buf.build/gen/go/lekkodev/sdk/protocolbuffers/go/lekko/client/v1beta1"
+	serverv1beta1 "buf.build/gen/go/lekkodev/sdk/protocolbuffers/go/lekko/server/v1beta1"
 	"github.com/lekkodev/go-sdk/pkg/eval"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
@@ -31,9 +33,11 @@ var (
 	ErrConfigNotFound error = fmt.Errorf("config not found")
 )
 
-func newStore() *store {
+func newStore(owner, repo string) *store {
 	return &store{
-		configs: make(map[string]map[string]configData),
+		configs:   make(map[string]map[string]configData),
+		ownerName: owner,
+		repoName:  repo,
 	}
 }
 
@@ -47,9 +51,10 @@ type configData struct {
 // all the configs with the contents of a new commit via the Update method.
 type store struct {
 	sync.RWMutex
-	configs     map[string]map[string]configData
-	commitSHA   string
-	contentHash string
+	configs             map[string]map[string]configData
+	commitSHA           string
+	contentHash         string
+	ownerName, repoName string
 }
 
 type storedConfig struct {
@@ -165,6 +170,30 @@ func (s *store) evaluateType(key string, namespace string, lc map[string]interfa
 		return nil, nil, errors.Wrapf(err, "invalid type, expecting %T", dest)
 	}
 	return cfg, rp, nil
+}
+
+func (s *store) listContents() (*serverv1beta1.ListContentsResponse, error) {
+	s.RLock()
+	defer s.RUnlock()
+	ret := &serverv1beta1.ListContentsResponse{
+		RepoKey: &clientv1beta1.RepositoryKey{
+			OwnerName: s.ownerName,
+			RepoName:  s.repoName,
+		},
+		CommitSha:   s.commitSHA,
+		ContentHash: s.contentHash,
+	}
+	for ns, configMap := range s.configs {
+		namespace := &serverv1beta1.Namespace{Name: ns}
+		for cfgName, cfg := range configMap {
+			namespace.Configs = append(namespace.Configs, &serverv1beta1.Config{
+				Name: cfgName,
+				Sha:  cfg.configSHA,
+			})
+		}
+		ret.Namespaces = append(ret.Namespaces, namespace)
+	}
+	return ret, nil
 }
 
 // wraps the contents in an object that caches its sha256 hash

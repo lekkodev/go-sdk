@@ -2,7 +2,7 @@ module github.com/lekkodev/go-sdk
 
 go 1.20
 
-require github.com/bufbuild/connect-go v1.9.0
+require github.com/bufbuild/connect-go v1.10.0
 
 require (
 	github.com/Microsoft/go-winio v0.5.2 // indirect
@@ -30,8 +30,8 @@ require (
 require (
 	buf.build/gen/go/lekkodev/cli/bufbuild/connect-go v1.9.0-20230713234042-fbaaf4924427.1
 	buf.build/gen/go/lekkodev/cli/protocolbuffers/go v1.31.0-20230713234042-fbaaf4924427.1
-	buf.build/gen/go/lekkodev/sdk/bufbuild/connect-go v1.9.0-20230620172853-31a82baf7ccf.1
-	buf.build/gen/go/lekkodev/sdk/protocolbuffers/go v1.31.0-20230620172853-31a82baf7ccf.1
+	buf.build/gen/go/lekkodev/sdk/bufbuild/connect-go v1.10.0-20230810202034-1c821065b9a0.1
+	buf.build/gen/go/lekkodev/sdk/protocolbuffers/go v1.31.0-20230810202034-1c821065b9a0.1
 	github.com/OneOfOne/xxhash v1.2.8
 	github.com/cenkalti/backoff/v4 v4.2.0
 	github.com/go-git/go-billy/v5 v5.4.1

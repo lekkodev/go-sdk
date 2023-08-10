@@ -42,15 +42,34 @@ type Store interface {
 }
 
 // Constructs an in-memory store that fetches configs from lekko's backend.
-func NewBackendStore(ctx context.Context, apiKey, url, ownerName, repoName string, updateInterval time.Duration) (Store, error) {
-	return newBackendStore(ctx, apiKey, ownerName, repoName, updateInterval, backendv1beta1connect.NewDistributionServiceClient(http.DefaultClient, url), eventsBatchSize)
+func NewBackendStore(
+	ctx context.Context,
+	apiKey, url, ownerName, repoName string,
+	updateInterval time.Duration,
+	serverPort int32,
+) (Store, error) {
+	return newBackendStore(
+		ctx,
+		apiKey, ownerName, repoName,
+		updateInterval,
+		backendv1beta1connect.NewDistributionServiceClient(http.DefaultClient, url),
+		eventsBatchSize,
+		serverPort,
+	)
 }
 
-func newBackendStore(ctx context.Context, apiKey, ownerName, repoName string, updateInterval time.Duration, distClient backendv1beta1connect.DistributionServiceClient, eventsBatchSize int) (*backendStore, error) {
+func newBackendStore(
+	ctx context.Context,
+	apiKey, ownerName, repoName string,
+	updateInterval time.Duration,
+	distClient backendv1beta1connect.DistributionServiceClient,
+	eventsBatchSize int,
+	serverPort int32,
+) (*backendStore, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	b := &backendStore{
 		distClient: distClient,
-		store:      newStore(),
+		store:      newStore(ownerName, repoName),
 		repoKey: &backendv1beta1.RepositoryKey{
 			OwnerName: ownerName,
 			RepoName:  repoName,
@@ -70,6 +89,7 @@ func newBackendStore(ctx context.Context, apiKey, ownerName, repoName string, up
 	if _, err := b.updateStoreWithBackoff(ctx); err != nil {
 		return nil, err
 	}
+	b.server = newSDKServer(serverPort, b.store)
 	// kick off an asynchronous goroutine that updates the store periodically
 	b.loop(ctx)
 	return b, nil
@@ -84,12 +104,14 @@ type backendStore struct {
 	updateInterval     time.Duration
 	cancel             context.CancelFunc
 	eb                 *eventBatcher
+	server             *sdkServer
 }
 
 // Close implements Store.
 func (b *backendStore) Close(ctx context.Context) error {
 	// cancel any ongoing background loops
 	b.cancel()
+	b.server.close(ctx)
 	b.eb.close(ctx)
 	// wait for background work to complete
 	b.wg.Wait()

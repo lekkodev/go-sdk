@@ -27,22 +27,31 @@ import (
 )
 
 const (
-	minUpdateInterval = time.Second
+	minUpdateInterval     = time.Second
+	defaultUpdateInterval = 15 * time.Second
 )
 
 // Constructs a provider that refreshes configs from Lekko backend repeatedly in the background,
-// caching the configs in-memory. ConnectionOptions is a required argument.
-func CachedAPIProvider(ctx context.Context, co *ConnectionOptions, repoKey RepositoryKey, updateInterval time.Duration) (Provider, error) {
-	if err := co.validate(true); err != nil {
+// caching the configs in-memory.
+func CachedAPIProvider(
+	ctx context.Context,
+	rk *RepositoryKey,
+	opts ...ProviderOption,
+) (Provider, error) {
+	cfg := &providerConfig{}
+	for _, opt := range opts {
+		opt.apply(cfg)
+	}
+	withFallbackURL(defaultAPIURL).apply(cfg)
+	withRepositoryKey(rk).apply(cfg)
+	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
-	if len(repoKey.OwnerName) == 0 || len(repoKey.RepoName) == 0 {
-		return nil, errors.New("missing repo key information")
-	}
-	if updateInterval.Seconds() < minUpdateInterval.Seconds() {
-		return nil, errors.Errorf("update interval too small, minimum %v", minUpdateInterval)
-	}
-	backend, err := memory.NewBackendStore(ctx, co.getAPIKey(), co.getURL(), repoKey.OwnerName, repoKey.RepoName, updateInterval)
+	backend, err := memory.NewBackendStore(
+		ctx,
+		cfg.apiKey, cfg.url,
+		cfg.repoKey.OwnerName, cfg.repoKey.RepoName,
+		cfg.updateInterval, cfg.serverPort)
 	if err != nil {
 		return nil, err
 	}
@@ -54,57 +63,37 @@ func CachedAPIProvider(ctx context.Context, co *ConnectionOptions, repoKey Repos
 // Reads configuration from a git repository on-disk. This provider will remain up to date with
 // changes made to the git repository on-disk. If on-disk contents change, this provider's internal
 // state will be updated without restart.
-// If ConnectionOptions are provided, this provider will send metrics back to lekko.
+// If api key and url are provided, this provider will send metrics back to lekko.
 // Provide the path to the root of the repository. 'path/.git/' should be a valid directory.
-func CachedGitFsProvider(ctx context.Context, path string, co *ConnectionOptions, repoKey RepositoryKey) (Provider, error) {
-	if err := co.validate(false); err != nil {
+func CachedGitFsProvider(
+	ctx context.Context,
+	repoKey *RepositoryKey,
+	path string,
+	opts ...ProviderOption,
+) (Provider, error) {
+	cfg := &providerConfig{}
+	for _, opt := range opts {
+		opt.apply(cfg)
+	}
+	withRepositoryKey(repoKey).apply(cfg)
+	if len(cfg.apiKey) > 0 {
+		withFallbackURL(defaultAPIURL).apply(cfg)
+	}
+	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
-	if len(repoKey.OwnerName) == 0 || len(repoKey.RepoName) == 0 {
-		return nil, errors.New("missing repo key information")
-	}
-	gitStore, err := memory.NewGitStore(ctx, co.getAPIKey(), co.getURL(), repoKey.OwnerName, repoKey.RepoName, path)
+	gitStore, err := memory.NewGitStore(
+		ctx,
+		cfg.apiKey, cfg.url,
+		cfg.repoKey.OwnerName, cfg.repoKey.RepoName,
+		path, cfg.serverPort,
+	)
 	if err != nil {
 		return nil, err
 	}
 	return &cachedProvider{
 		store: gitStore,
 	}, nil
-}
-
-// Arguments needed to connect to Lekko.
-type ConnectionOptions struct {
-	// Lekko API key (lekko_*****)
-	APIKey string
-	// URL to connect to. If empty, connects to Lekko's backend.
-	URL string
-}
-
-func (co *ConnectionOptions) validate(required bool) error {
-	if !required && co == nil {
-		return nil
-	}
-	if len(co.APIKey) == 0 {
-		return errors.New("api key is required")
-	}
-	if len(co.URL) == 0 {
-		co.URL = defaultAPIURL
-	}
-	return nil
-}
-
-func (co *ConnectionOptions) getAPIKey() string {
-	if co == nil {
-		return ""
-	}
-	return co.APIKey
-}
-
-func (co *ConnectionOptions) getURL() string {
-	if co == nil {
-		return ""
-	}
-	return co.URL
 }
 
 type cachedProvider struct {
