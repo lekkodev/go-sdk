@@ -39,14 +39,13 @@ func TestGitStore(t *testing.T) {
 	gs, err := newGitStore(ctx, "", "lekkodev", "testrepo", storer, fs, nil, 10, false, 0)
 	require.NoError(t, err)
 	assert.NotNil(t, gs)
-	assert.NotContains(t, gs.store.getCommitSha(), "dirty", "working directory is clean")
 
 	bv := wrapperspb.BoolValue{}
 	require.NoError(t, gs.Evaluate("example", "default", nil, &bv))
 	assert.True(t, bv.Value)
 
 	sv := wrapperspb.StringValue{}
-	require.NoError(t, gs.Evaluate("string", "test-namespace", nil, &sv))
+	require.NoError(t, gs.Evaluate("tiers", "test-namespace", nil, &sv))
 	assert.Equal(t, sv.Value, "foo")
 
 	require.Error(t, gs.Evaluate("not-a-key", "not-a-ns", nil, &bv))

@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sort"
 	"sync"
 	"time"
 
@@ -92,5 +93,19 @@ func (ssh *sdkServerHandler) ListContents(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	sortContentsResp(resp)
 	return connect.NewResponse(resp), nil
+}
+
+func sortContentsResp(contents *serverv1beta1.ListContentsResponse) {
+	nss := contents.GetNamespaces()
+	sort.Slice(nss, func(i, j int) bool {
+		return nss[i].GetName() < nss[j].GetName()
+	})
+	for _, ns := range nss {
+		cfgs := ns.GetConfigs()
+		sort.Slice(cfgs, func(i, j int) bool {
+			return cfgs[i].GetName() < cfgs[j].GetName()
+		})
+	}
 }

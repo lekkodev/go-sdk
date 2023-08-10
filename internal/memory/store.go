@@ -18,6 +18,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"sort"
 	"sync"
 
 	backendv1beta1 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/backend/v1beta1"
@@ -70,6 +71,7 @@ func (s *store) update(contents *backendv1beta1.GetRepositoryContentsResponse) (
 	if contents == nil {
 		return false, errors.New("update with empty contents")
 	}
+	sortContents(contents)
 	req := &updateRequest{contents: contents}
 	// preemptive check to avoid holding the write lock at the
 	// last minute if we can avoid it
@@ -219,4 +221,17 @@ func (ur *updateRequest) calculateContentHash() error {
 func hashContentsSHA256(bytes []byte) string {
 	shaBytes := sha256.Sum256(bytes)
 	return hex.EncodeToString(shaBytes[:])
+}
+
+func sortContents(contents *backendv1beta1.GetRepositoryContentsResponse) {
+	nss := contents.GetNamespaces()
+	sort.Slice(nss, func(i, j int) bool {
+		return nss[i].GetName() < nss[j].GetName()
+	})
+	for _, ns := range nss {
+		cfgs := ns.GetFeatures()
+		sort.Slice(cfgs, func(i, j int) bool {
+			return cfgs[i].GetName() < cfgs[j].GetName()
+		})
+	}
 }
