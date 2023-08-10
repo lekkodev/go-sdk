@@ -44,6 +44,7 @@ func ConnectAPIProvider(ctx context.Context, apiKey string, rk *RepositoryKey, o
 	for _, opt := range opts {
 		opt.apply(cfg)
 	}
+	// the following options cannot be overridden by opts
 	withFallbackURL(defaultAPIURL).apply(cfg)
 	WithAPIKey(apiKey).apply(cfg)
 	withRepositoryKey(rk).apply(cfg)
@@ -70,6 +71,7 @@ func ConnectSidecarProvider(ctx context.Context, url string, rk *RepositoryKey, 
 	for _, opt := range opts {
 		opt.apply(cfg)
 	}
+	// the following options cannot be overridden by opts
 	WithURL(url).apply(cfg)
 	withFallbackURL(defaultSidecarURL).apply(cfg)
 	withRepositoryKey(rk).apply(cfg)
