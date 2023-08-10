@@ -215,10 +215,45 @@ func toContextKeysProto(lc map[string]interface{}) []*backendv1beta1.ContextKey 
 	for k, v := range lc {
 		ret = append(ret, &backendv1beta1.ContextKey{
 			Key:  k,
-			Type: fmt.Sprintf("%T", v),
+			Type: contextKeyTypeToProto(v),
 		})
 	}
 	return ret
+}
+
+func contextKeyTypeToProto(v interface{}) string {
+	switch v.(type) {
+	case bool:
+		return "bool"
+	case string:
+		return "string"
+	case int:
+		return "int"
+	case int8:
+		return "int"
+	case int16:
+		return "int"
+	case int32:
+		return "int"
+	case int64:
+		return "int"
+	case uint:
+		return "int"
+	case uint16:
+		return "int"
+	case uint32:
+		return "int"
+	case uint64:
+		return "int"
+	case uint8:
+		return "int"
+	case float32:
+		return "float"
+	case float64:
+		return "float"
+	default:
+		return fmt.Sprintf("%T", v)
+	}
 }
 
 func toResultPathProto(rp []int) []int32 {
