@@ -65,11 +65,9 @@ func getProvider(ctx context.Context, key, mode, path, owner, repo string, port 
 		OwnerName: owner,
 		RepoName:  repo,
 	}
-	var so *client.ServerOptions
+	var opts []client.ProviderOption
 	if port > 0 {
-		so = &client.ServerOptions{
-			Port: int32(port),
-		}
+		opts = append(opts, client.WithServerOption(int32(port)))
 	}
 	var provider client.Provider
 	var err error
@@ -77,17 +75,13 @@ func getProvider(ctx context.Context, key, mode, path, owner, repo string, port 
 	case "api":
 		provider, err = client.ConnectAPIProvider(ctx, key, rk)
 	case "cached":
-		provider, err = client.CachedAPIProvider(ctx, &client.ConnectionOptions{
-			APIKey: key,
-			URL:    "",
-		}, *rk, 10*time.Second, so)
+		opts = append(opts, client.WithAPIKey(key))
+		provider, err = client.CachedAPIProvider(ctx, rk, opts...)
 	case "git":
-		provider, err = client.CachedGitFsProvider(ctx, path, &client.ConnectionOptions{
-			APIKey: key,
-			URL:    "",
-		}, *rk, so)
+		opts = append(opts, client.WithAPIKey(key))
+		provider, err = client.CachedGitFsProvider(ctx, rk, path, opts...)
 	case "gitlocal":
-		provider, err = client.CachedGitFsProvider(ctx, path, nil, *rk, so)
+		provider, err = client.CachedGitFsProvider(ctx, rk, path, opts...)
 	default:
 		err = errors.Errorf("unknown mode %s", mode)
 	}

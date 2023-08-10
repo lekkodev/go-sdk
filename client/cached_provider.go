@@ -27,35 +27,31 @@ import (
 )
 
 const (
-	minUpdateInterval = time.Second
+	minUpdateInterval     = time.Second
+	defaultUpdateInterval = 15 * time.Second
 )
 
 // Constructs a provider that refreshes configs from Lekko backend repeatedly in the background,
-// caching the configs in-memory. ConnectionOptions is a required argument.
+// caching the configs in-memory.
 func CachedAPIProvider(
 	ctx context.Context,
-	co *ConnectionOptions,
-	repoKey RepositoryKey,
-	updateInterval time.Duration,
-	so *ServerOptions,
+	rk *RepositoryKey,
+	opts ...ProviderOption,
 ) (Provider, error) {
-	if err := co.validate(true); err != nil {
-		return nil, err
+	cfg := &providerConfig{}
+	for _, opt := range opts {
+		opt.apply(cfg)
 	}
-	if len(repoKey.OwnerName) == 0 || len(repoKey.RepoName) == 0 {
-		return nil, errors.New("missing repo key information")
-	}
-	if updateInterval.Seconds() < minUpdateInterval.Seconds() {
-		return nil, errors.Errorf("update interval too small, minimum %v", minUpdateInterval)
-	}
-	if err := so.validate(); err != nil {
+	withFallbackURL(defaultAPIURL).apply(cfg)
+	withRepositoryKey(rk)
+	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
 	backend, err := memory.NewBackendStore(
 		ctx,
-		co.getAPIKey(), co.getURL(),
-		repoKey.OwnerName, repoKey.RepoName,
-		updateInterval, so.getPort())
+		cfg.apiKey, cfg.url,
+		cfg.repoKey.OwnerName, cfg.repoKey.RepoName,
+		cfg.updateInterval, cfg.serverPort)
 	if err != nil {
 		return nil, err
 	}
@@ -67,29 +63,28 @@ func CachedAPIProvider(
 // Reads configuration from a git repository on-disk. This provider will remain up to date with
 // changes made to the git repository on-disk. If on-disk contents change, this provider's internal
 // state will be updated without restart.
-// If ConnectionOptions are provided, this provider will send metrics back to lekko.
+// If api key and url are provided, this provider will send metrics back to lekko.
 // Provide the path to the root of the repository. 'path/.git/' should be a valid directory.
 func CachedGitFsProvider(
 	ctx context.Context,
+	repoKey *RepositoryKey,
 	path string,
-	co *ConnectionOptions,
-	repoKey RepositoryKey,
-	so *ServerOptions,
+	opts ...ProviderOption,
 ) (Provider, error) {
-	if err := co.validate(false); err != nil {
-		return nil, err
+	cfg := &providerConfig{}
+	for _, opt := range opts {
+		opt.apply(cfg)
 	}
-	if len(repoKey.OwnerName) == 0 || len(repoKey.RepoName) == 0 {
-		return nil, errors.New("missing repo key information")
-	}
-	if err := so.validate(); err != nil {
+	withRepositoryKey(repoKey)
+	withFallbackURL(defaultAPIURL)
+	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
 	gitStore, err := memory.NewGitStore(
 		ctx,
-		co.getAPIKey(), co.getURL(),
-		repoKey.OwnerName, repoKey.RepoName,
-		path, so.getPort(),
+		cfg.apiKey, cfg.url,
+		cfg.repoKey.OwnerName, cfg.repoKey.RepoName,
+		path, cfg.serverPort,
 	)
 	if err != nil {
 		return nil, err
@@ -97,65 +92,6 @@ func CachedGitFsProvider(
 	return &cachedProvider{
 		store: gitStore,
 	}, nil
-}
-
-// Arguments needed to connect to Lekko.
-type ConnectionOptions struct {
-	// Lekko API key (lekko_*****)
-	APIKey string
-	// URL to connect to. If empty, connects to Lekko's backend.
-	URL string
-}
-
-func (co *ConnectionOptions) validate(required bool) error {
-	if !required && co == nil {
-		return nil
-	}
-	if len(co.APIKey) == 0 {
-		return errors.New("api key is required")
-	}
-	if len(co.URL) == 0 {
-		co.URL = defaultAPIURL
-	}
-	return nil
-}
-
-func (co *ConnectionOptions) getAPIKey() string {
-	if co == nil {
-		return ""
-	}
-	return co.APIKey
-}
-
-func (co *ConnectionOptions) getURL() string {
-	if co == nil {
-		return ""
-	}
-	return co.URL
-}
-
-// Arguments needed to start a local web server for debugging.
-// Server will be started on 0.0.0.0:port.
-type ServerOptions struct {
-	// Port must be >= 0
-	Port int32
-}
-
-func (so *ServerOptions) validate() error {
-	if so == nil {
-		return nil
-	}
-	if so.Port <= 0 {
-		return errors.New("server port must be greater than 0")
-	}
-	return nil
-}
-
-func (so *ServerOptions) getPort() int32 {
-	if so == nil {
-		return 0
-	}
-	return so.Port
 }
 
 type cachedProvider struct {
