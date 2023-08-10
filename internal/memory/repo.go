@@ -113,7 +113,7 @@ func (r *repository) getConfigs(ns string) ([]*backendv1beta1.Feature, error) {
 		}
 		name := entry.Name()
 		if strings.HasSuffix(name, ".star") {
-			configNames = append(configNames, strings.TrimRight(name, ".star"))
+			configNames = append(configNames, strings.TrimSuffix(name, ".star"))
 		}
 	}
 	var configs []*backendv1beta1.Feature
