@@ -30,7 +30,7 @@ import (
 
 const (
 	defaultAPIURL     = "https://prod.api.lekko.dev:443"
-	defaultSidecarURL = "https://localhost:50051"
+	defaultSidecarURL = "http://localhost:50051"
 	lekkoAPIKeyHeader = "apikey"
 )
 
