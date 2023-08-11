@@ -172,6 +172,7 @@ func (g *gitStore) watch(ctx context.Context, fsChan <-chan notify.EventInfo) {
 	for {
 		select {
 		case <-ctx.Done():
+			log.Printf("context was cancelled, stopping to watch %s\n", g.fs.Root())
 			return
 		case <-fsChan:
 			_, err := g.load(ctx)
