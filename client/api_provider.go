@@ -16,10 +16,7 @@ package client
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
-	"net"
-	"net/http"
 
 	clientv1beta1connect "buf.build/gen/go/lekkodev/sdk/bufbuild/connect-go/lekko/client/v1beta1/clientv1beta1connect"
 	clientv1beta1 "buf.build/gen/go/lekkodev/sdk/protocolbuffers/go/lekko/client/v1beta1"
@@ -27,7 +24,6 @@ import (
 	"github.com/bufbuild/connect-go"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/pkg/errors"
-	"golang.org/x/net/http2"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 )
@@ -53,7 +49,7 @@ func ConnectAPIProvider(ctx context.Context, apiKey string, rk *RepositoryKey, o
 	}
 	provider := &apiProvider{
 		apikey:      cfg.apiKey,
-		lekkoClient: clientv1beta1connect.NewConfigurationServiceClient(http.DefaultClient, cfg.url),
+		lekkoClient: clientv1beta1connect.NewConfigurationServiceClient(cfg.getHTTPClient(), cfg.url),
 		rk:          cfg.repoKey,
 	}
 	if err := provider.register(ctx); err != nil {
@@ -75,6 +71,7 @@ func ConnectSidecarProvider(ctx context.Context, url string, rk *RepositoryKey, 
 	WithURL(url).apply(cfg)
 	withFallbackURL(defaultSidecarURL).apply(cfg)
 	withRepositoryKey(rk).apply(cfg)
+	WithAllowHTTP().apply(cfg) // sidecar must communicate over h2c
 	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
@@ -83,14 +80,11 @@ func ConnectSidecarProvider(ctx context.Context, url string, rk *RepositoryKey, 
 	// e.g. grpc instead of raw http.
 	// TODO: make use of tls config once the sidecar supports tls.
 	provider := &apiProvider{
-		lekkoClient: clientv1beta1connect.NewConfigurationServiceClient(&http.Client{
-			Transport: &http2.Transport{
-				AllowHTTP: true,
-				DialTLS: func(network, addr string, _ *tls.Config) (net.Conn, error) {
-					return net.Dial(network, addr)
-				},
-			},
-		}, cfg.url, connect.WithGRPC()),
+		lekkoClient: clientv1beta1connect.NewConfigurationServiceClient(
+			cfg.getHTTPClient(),
+			cfg.url,
+			connect.WithGRPC(),
+		),
 		rk: cfg.repoKey,
 	}
 	if err := provider.registerWithBackoff(ctx); err != nil {

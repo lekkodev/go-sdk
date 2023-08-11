@@ -16,10 +16,14 @@ package client
 
 import (
 	"context"
+	"crypto/tls"
+	"net"
+	"net/http"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
+	"golang.org/x/net/http2"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -121,12 +125,26 @@ func (cfg *providerConfig) validate() error {
 	} else if cfg.updateInterval.Seconds() < minUpdateInterval.Seconds() {
 		return errors.Errorf("update interval too small, minimum %v", minUpdateInterval)
 	}
-	if cfg.allowHTTP && strings.HasPrefix(cfg.url, "https") {
+	if cfg.allowHTTP && strings.HasPrefix(cfg.url, "https://") {
 		return errors.Errorf("connecting to https endpoint: %s over gRPC/h2c, please unset AllowHTTP option", cfg.url)
-	} else if !cfg.allowHTTP && strings.HasPrefix(cfg.url, "http") {
-		return errors.Errorf("connecting to http endpoint: %s over gRPC/TLS, please unset AllowHTTP option", cfg.url)
+	} else if !cfg.allowHTTP && strings.HasPrefix(cfg.url, "http://") {
+		return errors.Errorf("connecting to http endpoint: %s over gRPC/TLS, please set AllowHTTP option", cfg.url)
 	}
 	return nil
+}
+
+func (cfg *providerConfig) getHTTPClient() *http.Client {
+	if cfg.allowHTTP {
+		return &http.Client{
+			Transport: &http2.Transport{
+				AllowHTTP: true,
+				DialTLS: func(network, addr string, _ *tls.Config) (net.Conn, error) {
+					return net.Dial(network, addr)
+				},
+			},
+		}
+	}
+	return http.DefaultClient
 }
 
 type fallbackURLOption struct {

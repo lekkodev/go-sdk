@@ -16,10 +16,8 @@ package memory
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -29,7 +27,6 @@ import (
 	"github.com/bufbuild/connect-go"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/pkg/errors"
-	"golang.org/x/net/http2"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
@@ -48,21 +45,10 @@ type Store interface {
 func NewBackendStore(
 	ctx context.Context,
 	apiKey, url, ownerName, repoName string,
-	allowHTTP bool,
+	client *http.Client,
 	updateInterval time.Duration,
 	serverPort int32,
 ) (Store, error) {
-	client := http.DefaultClient
-	if allowHTTP {
-		client = &http.Client{
-			Transport: &http2.Transport{
-				AllowHTTP: true,
-				DialTLS: func(network, addr string, _ *tls.Config) (net.Conn, error) {
-					return net.Dial(network, addr)
-				},
-			},
-		}
-	}
 	return newBackendStore(
 		ctx,
 		apiKey, ownerName, repoName,

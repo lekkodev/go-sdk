@@ -41,11 +41,12 @@ import (
 func NewGitStore(
 	ctx context.Context,
 	apiKey, url, ownerName, repoName, path string,
+	client *http.Client,
 	port int32,
 ) (Store, error) {
 	var distClient backendv1beta1connect.DistributionServiceClient
 	if len(apiKey) > 0 {
-		distClient = backendv1beta1connect.NewDistributionServiceClient(http.DefaultClient, url)
+		distClient = backendv1beta1connect.NewDistributionServiceClient(client, url, connect.WithGRPC())
 	}
 	fs := osfs.New(path)
 	gitfs, err := fs.Chroot(git.GitDirName)

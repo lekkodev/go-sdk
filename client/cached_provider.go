@@ -52,7 +52,7 @@ func CachedAPIProvider(
 		ctx,
 		cfg.apiKey, cfg.url,
 		cfg.repoKey.OwnerName, cfg.repoKey.RepoName,
-		cfg.allowHTTP,
+		cfg.getHTTPClient(),
 		cfg.updateInterval, cfg.serverPort)
 	if err != nil {
 		return nil, err
@@ -88,7 +88,7 @@ func CachedGitFsProvider(
 		ctx,
 		cfg.apiKey, cfg.url,
 		cfg.repoKey.OwnerName, cfg.repoKey.RepoName,
-		path, cfg.serverPort,
+		path, cfg.getHTTPClient(), cfg.serverPort,
 	)
 	if err != nil {
 		return nil, err
