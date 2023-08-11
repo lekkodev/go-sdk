@@ -47,10 +47,12 @@ func CachedAPIProvider(
 	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
+
 	backend, err := memory.NewBackendStore(
 		ctx,
 		cfg.apiKey, cfg.url,
 		cfg.repoKey.OwnerName, cfg.repoKey.RepoName,
+		cfg.allowHTTP,
 		cfg.updateInterval, cfg.serverPort)
 	if err != nil {
 		return nil, err

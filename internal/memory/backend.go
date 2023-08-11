@@ -21,7 +21,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
@@ -49,11 +48,12 @@ type Store interface {
 func NewBackendStore(
 	ctx context.Context,
 	apiKey, url, ownerName, repoName string,
+	allowHTTP bool,
 	updateInterval time.Duration,
 	serverPort int32,
 ) (Store, error) {
 	client := http.DefaultClient
-	if strings.HasPrefix(url, "http://") {
+	if allowHTTP {
 		client = &http.Client{
 			Transport: &http2.Transport{
 				AllowHTTP: true,
