@@ -124,7 +124,7 @@ func (g *gitStore) registerWithBackoff(ctx context.Context) (string, error) {
 		RepoKey:       g.repoKey,
 		NamespaceList: []string{}, // register all namespaces
 	})
-	req.Header().Set(lekkoAPIKeyHeader, g.apiKey)
+	setAPIKey(req, g.apiKey)
 	var resp *connect.Response[backendv1beta1.RegisterClientResponse]
 	var err error
 	op := func() error {
@@ -216,7 +216,7 @@ func (g *gitStore) Close(ctx context.Context) error {
 		req := connect.NewRequest(&backendv1beta1.DeregisterClientRequest{
 			SessionKey: g.sessionKey,
 		})
-		req.Header().Set(lekkoAPIKeyHeader, g.apiKey)
+		setAPIKey(req, g.apiKey)
 		if _, err := g.distClient.DeregisterClient(ctx, req); err != nil {
 			log.Printf("error deregistering lekko client: %v", err)
 		}
