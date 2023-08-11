@@ -115,7 +115,7 @@ func (e *eventBatcher) sendBatchWithBackoff(ctx context.Context, batch []*backen
 		Events:     batch,
 		SessionKey: e.sessionKey,
 	})
-	req.Header().Set(lekkoAPIKeyHeader, e.apiKey)
+	setAPIKey(req, e.apiKey)
 	op := func() error {
 		_, err := e.distClient.SendFlagEvaluationMetrics(ctx, req)
 		if err != nil {

@@ -45,6 +45,7 @@ type Store interface {
 func NewBackendStore(
 	ctx context.Context,
 	apiKey, url, ownerName, repoName string,
+	client *http.Client,
 	updateInterval time.Duration,
 	serverPort int32,
 ) (Store, error) {
@@ -52,7 +53,7 @@ func NewBackendStore(
 		ctx,
 		apiKey, ownerName, repoName,
 		updateInterval,
-		backendv1beta1connect.NewDistributionServiceClient(http.DefaultClient, url),
+		backendv1beta1connect.NewDistributionServiceClient(client, url, connect.WithGRPC()),
 		eventsBatchSize,
 		serverPort,
 	)
@@ -118,7 +119,7 @@ func (b *backendStore) Close(ctx context.Context) error {
 	req := connect.NewRequest(&backendv1beta1.DeregisterClientRequest{
 		SessionKey: b.sessionKey,
 	})
-	req.Header().Set(lekkoAPIKeyHeader, b.apiKey)
+	setAPIKey(req, b.apiKey)
 	_, err := b.distClient.DeregisterClient(ctx, req)
 	return err
 }
@@ -147,7 +148,7 @@ func (b *backendStore) registerWithBackoff(ctx context.Context) (string, error) 
 		RepoKey:       b.repoKey,
 		NamespaceList: []string{}, // register all namespaces
 	})
-	req.Header().Set(lekkoAPIKeyHeader, b.apiKey)
+	setAPIKey(req, b.apiKey)
 	var resp *connect.Response[backendv1beta1.RegisterClientResponse]
 	var err error
 	op := func() error {
@@ -172,7 +173,7 @@ func (b *backendStore) updateStoreWithBackoff(ctx context.Context) (bool, error)
 		RepoKey:    b.repoKey,
 		SessionKey: b.sessionKey,
 	})
-	req.Header().Set(lekkoAPIKeyHeader, b.apiKey)
+	setAPIKey(req, b.apiKey)
 	var contents *backendv1beta1.GetRepositoryContentsResponse
 	op := func() error {
 		resp, err := b.distClient.GetRepositoryContents(ctx, req)
@@ -195,7 +196,7 @@ func (b *backendStore) shouldUpdateStore(ctx context.Context) (bool, error) {
 		RepoKey:    b.repoKey,
 		SessionKey: b.sessionKey,
 	})
-	req.Header().Set(lekkoAPIKeyHeader, b.apiKey)
+	setAPIKey(req, b.apiKey)
 	resp, err := b.distClient.GetRepositoryVersion(ctx, req)
 	if err != nil {
 		return false, errors.Wrap(err, "failed to get repository version")
@@ -284,4 +285,10 @@ func toResultPathProto(rp []int) []int32 {
 		ret[i] = int32(rp[i])
 	}
 	return ret
+}
+
+func setAPIKey(req connect.AnyRequest, apiKey string) {
+	if len(apiKey) > 0 {
+		req.Header().Set(lekkoAPIKeyHeader, apiKey)
+	}
 }
