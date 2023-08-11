@@ -16,9 +16,12 @@ package memory
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -27,6 +30,7 @@ import (
 	"github.com/bufbuild/connect-go"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/pkg/errors"
+	"golang.org/x/net/http2"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
@@ -48,11 +52,22 @@ func NewBackendStore(
 	updateInterval time.Duration,
 	serverPort int32,
 ) (Store, error) {
+	client := http.DefaultClient
+	if strings.HasPrefix(url, "http://") {
+		client = &http.Client{
+			Transport: &http2.Transport{
+				AllowHTTP: true,
+				DialTLS: func(network, addr string, _ *tls.Config) (net.Conn, error) {
+					return net.Dial(network, addr)
+				},
+			},
+		}
+	}
 	return newBackendStore(
 		ctx,
 		apiKey, ownerName, repoName,
 		updateInterval,
-		backendv1beta1connect.NewDistributionServiceClient(http.DefaultClient, url),
+		backendv1beta1connect.NewDistributionServiceClient(client, url, connect.WithGRPC()),
 		eventsBatchSize,
 		serverPort,
 	)
