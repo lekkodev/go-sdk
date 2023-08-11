@@ -25,9 +25,10 @@ import (
 )
 
 func main() {
-	var key, mode, namespace, config, path, owner, repo string
+	var key, mode, namespace, config, path, owner, repo, url string
 	var port int
 	var sleep time.Duration
+	var allowHTTP bool
 	flag.StringVar(&key, "lekko-apikey", "", "API key for lekko given to your organization")
 	flag.StringVar(&mode, "mode", "api", "Mode to start the sdk in (api, cached, git, gitlocal)")
 	flag.StringVar(&namespace, "namespace", "default", "namespace to request the config from")
@@ -37,13 +38,15 @@ func main() {
 	flag.StringVar(&repo, "repo", "example", "name of the repository on github")
 	flag.IntVar(&port, "port", 0, "port to serve web server on")
 	flag.DurationVar(&sleep, "sleep", 0, "optional sleep duration to invoke web server")
+	flag.StringVar(&url, "url", "", "optional URL to configure the provider")
+	flag.BoolVar(&allowHTTP, "allow-http", false, "whether or not to allow http/2 requests")
 	flag.Parse()
 
 	var provider client.Provider
 	var err error
 	ctx, cancelF := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelF()
-	provider, err = getProvider(ctx, key, mode, path, owner, repo, port)
+	provider, err = getProvider(ctx, key, mode, path, owner, repo, url, port, allowHTTP)
 	if err != nil {
 		log.Fatalf("error when starting in %s mode: %v\n", mode, err)
 	}
@@ -60,7 +63,11 @@ func main() {
 	time.Sleep(sleep)
 }
 
-func getProvider(ctx context.Context, key, mode, path, owner, repo string, port int) (client.Provider, error) {
+func getProvider(
+	ctx context.Context,
+	key, mode, path, owner, repo, url string,
+	port int, allowHTTP bool,
+) (client.Provider, error) {
 	rk := &client.RepositoryKey{
 		OwnerName: owner,
 		RepoName:  repo,
@@ -68,6 +75,12 @@ func getProvider(ctx context.Context, key, mode, path, owner, repo string, port 
 	var opts []client.ProviderOption
 	if port > 0 {
 		opts = append(opts, client.WithServerOption(int32(port)))
+	}
+	if len(url) > 0 {
+		opts = append(opts, client.WithURL(url))
+	}
+	if allowHTTP {
+		opts = append(opts, client.WithAllowHTTP())
 	}
 	var provider client.Provider
 	var err error
