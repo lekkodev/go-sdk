@@ -34,6 +34,7 @@ import (
 const (
 	lekkoAPIKeyHeader = "apikey"
 	eventsBatchSize   = 100
+	sdkVersion        = "go" // the version we communicate to the server
 )
 
 type Store interface {
@@ -145,8 +146,9 @@ func (b *backendStore) Evaluate(key string, namespace string, lc map[string]inte
 
 func (b *backendStore) registerWithBackoff(ctx context.Context) (string, error) {
 	req := connect.NewRequest(&backendv1beta1.RegisterClientRequest{
-		RepoKey:       b.repoKey,
-		NamespaceList: []string{}, // register all namespaces
+		RepoKey:        b.repoKey,
+		NamespaceList:  []string{}, // register all namespaces
+		SidecarVersion: sdkVersion,
 	})
 	setAPIKey(req, b.apiKey)
 	var resp *connect.Response[backendv1beta1.RegisterClientResponse]

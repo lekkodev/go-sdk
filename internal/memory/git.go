@@ -121,8 +121,9 @@ type gitStore struct {
 
 func (g *gitStore) registerWithBackoff(ctx context.Context) (string, error) {
 	req := connect.NewRequest(&backendv1beta1.RegisterClientRequest{
-		RepoKey:       g.repoKey,
-		NamespaceList: []string{}, // register all namespaces
+		RepoKey:        g.repoKey,
+		NamespaceList:  []string{}, // register all namespaces
+		SidecarVersion: sdkVersion,
 	})
 	setAPIKey(req, g.apiKey)
 	var resp *connect.Response[backendv1beta1.RegisterClientResponse]
