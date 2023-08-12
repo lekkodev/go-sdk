@@ -33,6 +33,9 @@ const (
 	defaultAPIURL     = "https://prod.api.lekko.dev:443"
 	defaultSidecarURL = "http://localhost:50051"
 	lekkoAPIKeyHeader = "apikey"
+	// The default ctx deadline set for registration
+	// and loading contents on startup.
+	defaultRPCDeadline = 3 * time.Second
 )
 
 // Fetches configuration directly from Lekko Backend APIs.
@@ -125,7 +128,7 @@ type apiProvider struct {
 // We do this to try to alleviate some issues with sidecars starting up.
 func (a *apiProvider) registerWithBackoff(ctx context.Context) error {
 	// registration should not take forever
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, defaultRPCDeadline)
 	defer cancel()
 	req := connect.NewRequest(&clientv1beta1.RegisterRequest{RepoKey: a.rk.toProto()})
 	req.Header().Set(lekkoAPIKeyHeader, a.apikey)
