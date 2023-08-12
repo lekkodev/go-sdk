@@ -120,6 +120,9 @@ type gitStore struct {
 }
 
 func (g *gitStore) registerWithBackoff(ctx context.Context) (string, error) {
+	// registration should not take forever
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
 	req := connect.NewRequest(&backendv1beta1.RegisterClientRequest{
 		RepoKey:        g.repoKey,
 		NamespaceList:  []string{}, // register all namespaces
