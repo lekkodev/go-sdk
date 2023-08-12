@@ -35,6 +35,9 @@ const (
 	lekkoAPIKeyHeader = "apikey"
 	eventsBatchSize   = 100
 	sdkVersion        = "go" // the version we communicate to the server
+	// The default ctx deadline set for registration
+	// and loading contents on startup.
+	defaultRPCDeadline = 3 * time.Second
 )
 
 type Store interface {
@@ -145,6 +148,9 @@ func (b *backendStore) Evaluate(key string, namespace string, lc map[string]inte
 }
 
 func (b *backendStore) registerWithBackoff(ctx context.Context) (string, error) {
+	// registration should not take forever
+	ctx, cancel := context.WithTimeout(ctx, defaultRPCDeadline)
+	defer cancel()
 	req := connect.NewRequest(&backendv1beta1.RegisterClientRequest{
 		RepoKey:        b.repoKey,
 		NamespaceList:  []string{}, // register all namespaces
@@ -171,6 +177,8 @@ func (b *backendStore) registerWithBackoff(ctx context.Context) (string, error) 
 }
 
 func (b *backendStore) updateStoreWithBackoff(ctx context.Context) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, defaultRPCDeadline)
+	defer cancel()
 	req := connect.NewRequest(&backendv1beta1.GetRepositoryContentsRequest{
 		RepoKey:    b.repoKey,
 		SessionKey: b.sessionKey,

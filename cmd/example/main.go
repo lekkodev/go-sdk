@@ -44,8 +44,7 @@ func main() {
 
 	var provider client.Provider
 	var err error
-	ctx, cancelF := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancelF()
+	ctx := context.Background()
 	provider, err = getProvider(ctx, key, mode, path, owner, repo, url, port, allowHTTP)
 	if err != nil {
 		log.Fatalf("error when starting in %s mode: %v\n", mode, err)
