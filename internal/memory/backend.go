@@ -71,7 +71,6 @@ func newBackendStore(
 	eventsBatchSize int,
 	serverPort int32,
 ) (*backendStore, error) {
-	ctx, cancel := context.WithCancel(ctx)
 	b := &backendStore{
 		distClient: distClient,
 		store:      newStore(ownerName, repoName),
@@ -81,7 +80,6 @@ func newBackendStore(
 		},
 		apiKey:         apiKey,
 		updateInterval: updateInterval,
-		cancel:         cancel,
 	}
 	// register with lekko backend
 	sessionKey, err := b.registerWithBackoff(ctx)
@@ -96,7 +94,9 @@ func newBackendStore(
 	}
 	b.server = newSDKServer(serverPort, b.store)
 	// kick off an asynchronous goroutine that updates the store periodically
-	b.loop(ctx)
+	bgCtx, bgCancel := noInheritCancel(ctx)
+	b.cancel = bgCancel
+	b.loop(bgCtx)
 	return b, nil
 }
 
@@ -301,4 +301,11 @@ func setAPIKey(req connect.AnyRequest, apiKey string) {
 	if len(apiKey) > 0 {
 		req.Header().Set(lekkoAPIKeyHeader, apiKey)
 	}
+}
+
+// Create a context that does not inherit from the parent context.
+// This is used to cancel any background processes. This structure
+// passes the contextcheck linter - https://github.com/kkHAIKE/contextcheck/issues/2
+func noInheritCancel(_ context.Context) (context.Context, context.CancelFunc) {
+	return context.WithCancel(context.Background())
 }

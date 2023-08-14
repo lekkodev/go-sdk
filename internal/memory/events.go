@@ -36,17 +36,17 @@ func newEventBatcher(
 	sessionKey, apiKey string,
 	batchSize int,
 ) *eventBatcher {
-	ctx, cancel := context.WithCancel(ctx)
 	eb := &eventBatcher{
 		distClient: distClient,
 		events:     make(chan *backendv1beta1.FlagEvaluationEvent, eventChannelSize),
-		cancel:     cancel,
 		sessionKey: sessionKey,
 		apiKey:     apiKey,
 		batchSize:  batchSize,
 	}
+	bgCtx, bgCancel := noInheritCancel(ctx)
+	eb.cancel = bgCancel
 	eb.wg.Add(1)
-	go eb.loop(ctx, eb.events)
+	go eb.loop(bgCtx, eb.events)
 	return eb
 }
 

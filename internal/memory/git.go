@@ -70,7 +70,6 @@ func newGitStore(
 	distClient backendv1beta1connect.DistributionServiceClient,
 	eventsBatchSize int, watch bool, port int32,
 ) (*gitStore, error) {
-	ctx, cancel := context.WithCancel(ctx)
 	g := &gitStore{
 		distClient: distClient,
 		store:      newStore(ownerName, repoName),
@@ -79,7 +78,6 @@ func newGitStore(
 			RepoName:  repoName,
 		},
 		apiKey: apiKey,
-		cancel: cancel,
 		storer: storer,
 		fs:     fs,
 	}
@@ -97,8 +95,10 @@ func newGitStore(
 		return nil, err
 	}
 	g.server = newSDKServer(port, g.store)
+	bgCtx, bgCancel := noInheritCancel(ctx)
+	g.cancel = bgCancel
 	if watch {
-		if err := g.startWatcher(ctx); err != nil {
+		if err := g.startWatcher(bgCtx); err != nil {
 			return nil, err
 		}
 	}
