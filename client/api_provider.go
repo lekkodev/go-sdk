@@ -48,7 +48,6 @@ func ConnectAPIProvider(ctx context.Context, apiKey string, rk *RepositoryKey, o
 	withFallbackURL(defaultAPIURL).apply(cfg)
 	WithAPIKey(apiKey).apply(cfg)
 	withRepositoryKey(rk).apply(cfg)
-	WithAllowShortLived().apply(cfg) // don't need a long-lived context
 	if err := cfg.validate(ctx); err != nil {
 		return nil, err
 	}
@@ -76,8 +75,7 @@ func ConnectSidecarProvider(ctx context.Context, url string, rk *RepositoryKey, 
 	WithURL(url).apply(cfg)
 	withFallbackURL(defaultSidecarURL).apply(cfg)
 	withRepositoryKey(rk).apply(cfg)
-	WithAllowHTTP().apply(cfg)       // sidecar must communicate over h2c
-	WithAllowShortLived().apply(cfg) // don't need a long-lived context
+	WithAllowHTTP().apply(cfg) // sidecar must communicate over h2c
 	if err := cfg.validate(ctx); err != nil {
 		return nil, err
 	}

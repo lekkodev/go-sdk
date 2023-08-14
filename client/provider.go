@@ -103,26 +103,12 @@ func WithServerOption(port int32) ProviderOption {
 
 func (o *ServerOption) apply(pc *providerConfig) { pc.serverPort = o.Port }
 
-type AllowShortLivedOption struct{}
-
-// Allow instantiating the provider with a short-lived context.
-// Note that cached SDKs typically require an unbounded context,
-// because they continually fetch updates in the background.
-func WithAllowShortLived() ProviderOption {
-	return &AllowShortLivedOption{}
-}
-
-func (o *AllowShortLivedOption) apply(cfg *providerConfig) {
-	cfg.allowShortLived = true
-}
-
 type providerConfig struct {
-	repoKey         *RepositoryKey
-	apiKey, url     string
-	updateInterval  time.Duration
-	serverPort      int32
-	allowHTTP       bool
-	allowShortLived bool
+	repoKey        *RepositoryKey
+	apiKey, url    string
+	updateInterval time.Duration
+	serverPort     int32
+	allowHTTP      bool
 }
 
 func (cfg *providerConfig) validate(ctx context.Context) error {
@@ -144,11 +130,6 @@ func (cfg *providerConfig) validate(ctx context.Context) error {
 	}
 	if !cfg.allowHTTP && strings.HasPrefix(cfg.url, "http://") {
 		return errors.Errorf("connecting to http endpoint: %s over gRPC/TLS, please set AllowHTTP option", cfg.url)
-	}
-	if !cfg.allowShortLived {
-		if _, hasDeadline := ctx.Deadline(); hasDeadline {
-			return errors.Errorf("context has a deadline, please use AllowShortLived option if this is intended")
-		}
 	}
 	return nil
 }
