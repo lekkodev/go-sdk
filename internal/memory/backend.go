@@ -34,7 +34,6 @@ import (
 const (
 	lekkoAPIKeyHeader = "apikey"
 	eventsBatchSize   = 100
-	sdkVersion        = "go" // the version we communicate to the server
 	// The default ctx deadline set for registration
 	// and loading contents on startup.
 	defaultRPCDeadline = 3 * time.Second
@@ -52,6 +51,7 @@ func NewBackendStore(
 	client *http.Client,
 	updateInterval time.Duration,
 	serverPort int32,
+	sdkVersion string,
 ) (Store, error) {
 	return newBackendStore(
 		ctx,
@@ -60,6 +60,7 @@ func NewBackendStore(
 		backendv1beta1connect.NewDistributionServiceClient(client, url, connect.WithGRPC()),
 		eventsBatchSize,
 		serverPort,
+		sdkVersion,
 	)
 }
 
@@ -70,6 +71,7 @@ func newBackendStore(
 	distClient backendv1beta1connect.DistributionServiceClient,
 	eventsBatchSize int,
 	serverPort int32,
+	sdkVersion string,
 ) (*backendStore, error) {
 	b := &backendStore{
 		distClient: distClient,
@@ -80,6 +82,7 @@ func newBackendStore(
 		},
 		apiKey:         apiKey,
 		updateInterval: updateInterval,
+		sdkVersion:     sdkVersion,
 	}
 	// register with lekko backend
 	sessionKey, err := b.registerWithBackoff(ctx)
@@ -110,6 +113,7 @@ type backendStore struct {
 	cancel             context.CancelFunc
 	eb                 *eventBatcher
 	server             *sdkServer
+	sdkVersion         string
 }
 
 // Close implements Store.
@@ -154,7 +158,7 @@ func (b *backendStore) registerWithBackoff(ctx context.Context) (string, error) 
 	req := connect.NewRequest(&backendv1beta1.RegisterClientRequest{
 		RepoKey:        b.repoKey,
 		NamespaceList:  []string{}, // register all namespaces
-		SidecarVersion: sdkVersion,
+		SidecarVersion: b.sdkVersion,
 	})
 	setAPIKey(req, b.apiKey)
 	var resp *connect.Response[backendv1beta1.RegisterClientResponse]

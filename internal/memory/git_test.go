@@ -36,7 +36,7 @@ func TestGitStore(t *testing.T) {
 	ctx := context.Background()
 	storer, fs := setupFS(t)
 
-	gs, err := newGitStore(ctx, "", "lekkodev", "testrepo", storer, fs, nil, 10, false, 0)
+	gs, err := newGitStore(ctx, "", "lekkodev", "testrepo", storer, fs, nil, 10, false, 0, testVersion)
 	require.NoError(t, err)
 	assert.NotNil(t, gs)
 

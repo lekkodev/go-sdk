@@ -35,6 +35,7 @@ import (
 
 const (
 	testSessionKey = "test-session"
+	testVersion    = "test-version"
 )
 
 func repositoryContents() *backendv1beta1.GetRepositoryContentsResponse {
@@ -62,8 +63,10 @@ func TestBackendStore(t *testing.T) {
 		contents:   repositoryContents(),
 	}
 	ctx := context.Background()
-	b, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, 6, 0)
+	b, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, 6, 0, testVersion)
 	require.NoError(t, err, "no error during register and init")
+
+	assert.Equal(t, testVersion, tds.registrationVersion)
 
 	bv := &wrapperspb.BoolValue{}
 	require.NoError(t, b.Evaluate("bool", "ns-1", nil, bv))
@@ -99,7 +102,7 @@ func TestBackendStoreRegisterError(t *testing.T) {
 		registerErr: backoff.Permanent(errors.New("registration failed")),
 	}
 	ctx := context.Background()
-	_, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, eventsBatchSize, 0)
+	_, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, eventsBatchSize, 0, testVersion)
 	require.Error(t, err)
 }
 
@@ -110,7 +113,7 @@ func TestBackendStoreDeregisterError(t *testing.T) {
 		deregisterErr: errors.New("deregistration failed"),
 	}
 	ctx := context.Background()
-	b, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, eventsBatchSize, 0)
+	b, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, eventsBatchSize, 0, testVersion)
 	require.NoError(t, err)
 
 	require.Error(t, b.Close(ctx))
@@ -123,7 +126,7 @@ func TestBackendStoreGetContentsError(t *testing.T) {
 		getContentsErr: backoff.Permanent(errors.New("get contents failed")),
 	}
 	ctx := context.Background()
-	_, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, eventsBatchSize, 0)
+	_, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, eventsBatchSize, 0, testVersion)
 	require.Error(t, err)
 }
 
@@ -133,6 +136,7 @@ type testDistService struct {
 	registerErr, deregisterErr, getContentsErr, getVersionErr error
 	contents                                                  *backendv1beta1.GetRepositoryContentsResponse
 	events                                                    []*backendv1beta1.FlagEvaluationEvent
+	registrationVersion                                       string
 }
 
 func (tds *testDistService) DeregisterClient(context.Context, *connect.Request[backendv1beta1.DeregisterClientRequest]) (*connect.Response[backendv1beta1.DeregisterClientResponse], error) {
@@ -153,7 +157,8 @@ func (tds *testDistService) GetRepositoryVersion(context.Context, *connect.Reque
 	}), tds.getVersionErr
 }
 
-func (tds *testDistService) RegisterClient(context.Context, *connect.Request[backendv1beta1.RegisterClientRequest]) (*connect.Response[backendv1beta1.RegisterClientResponse], error) {
+func (tds *testDistService) RegisterClient(ctx context.Context, req *connect.Request[backendv1beta1.RegisterClientRequest]) (*connect.Response[backendv1beta1.RegisterClientResponse], error) {
+	tds.registrationVersion = req.Msg.GetSidecarVersion()
 	return connect.NewResponse(&backendv1beta1.RegisterClientResponse{
 		SessionKey: tds.sessionKey,
 	}), tds.registerErr

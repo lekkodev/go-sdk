@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/lekkodev/go-sdk/internal/memory"
+	"github.com/lekkodev/go-sdk/internal/version"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -53,7 +54,9 @@ func CachedAPIProvider(
 		cfg.apiKey, cfg.url,
 		cfg.repoKey.OwnerName, cfg.repoKey.RepoName,
 		cfg.getHTTPClient(),
-		cfg.updateInterval, cfg.serverPort)
+		cfg.updateInterval, cfg.serverPort,
+		version.SDKVersion,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -89,6 +92,7 @@ func CachedGitFsProvider(
 		cfg.apiKey, cfg.url,
 		cfg.repoKey.OwnerName, cfg.repoKey.RepoName,
 		path, cfg.getHTTPClient(), cfg.serverPort,
+		version.SDKVersion,
 	)
 	if err != nil {
 		return nil, err
