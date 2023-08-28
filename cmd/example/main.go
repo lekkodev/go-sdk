@@ -25,7 +25,7 @@ import (
 )
 
 func main() {
-	var key, mode, namespace, config, path, owner, repo, url string
+	var key, mode, namespace, config, path, owner, repo, url, cfgType string
 	var port int
 	var sleep time.Duration
 	var allowHTTP bool
@@ -33,6 +33,7 @@ func main() {
 	flag.StringVar(&mode, "mode", "api", "Mode to start the sdk in (api, cached, git, gitlocal)")
 	flag.StringVar(&namespace, "namespace", "default", "namespace to request the config from")
 	flag.StringVar(&config, "config", "hello", "name of the config to request")
+	flag.StringVar(&cfgType, "type", "string", "Type of config to read (string, int, float, bool)")
 	flag.StringVar(&path, "path", "", "path to config repo if operating in git mode")
 	flag.StringVar(&owner, "owner", "lekkodev", "name of the repository's github owner")
 	flag.StringVar(&repo, "repo", "example", "name of the repository on github")
@@ -54,7 +55,19 @@ func main() {
 	defer func() {
 		_ = closeF(context.Background())
 	}()
-	result, err := cl.GetString(ctx, config)
+	var result any
+	switch cfgType {
+	case "string":
+		result, err = cl.GetString(ctx, config)
+	case "int":
+		result, err = cl.GetInt(ctx, config)
+	case "float":
+		result, err = cl.GetFloat(ctx, config)
+	case "bool":
+		result, err = cl.GetBool(ctx, config)
+	default:
+		log.Fatalf("unknown config type %s\n", cfgType)
+	}
 	if err != nil {
 		log.Fatalf("error retrieving config: %v\n", err)
 	}
