@@ -7,3 +7,6 @@ DOCKER_PROJECT := example
 FILE_IGNORES := $(FILE_IGNORES) .vscode/ ./cmd/example/example
 
 include make/example/all.mk
+
+release:
+	./release.sh
