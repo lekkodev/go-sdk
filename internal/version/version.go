@@ -22,13 +22,13 @@ import (
 
 var (
 	//go:embed version.txt
-	version    string
-	Version    = readVersion()
-	SDKVersion = fmt.Sprintf("go-%s", Version)
+	embedVersion string
+	version      = readVersion()
+	SDKVersion   = fmt.Sprintf("go-%s", version)
 )
 
 func readVersion() string {
-	v := strings.TrimSpace(version)
+	v := strings.TrimSpace(embedVersion)
 	if len(v) == 0 {
 		return "unknown"
 	}

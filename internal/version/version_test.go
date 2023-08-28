@@ -23,7 +23,7 @@ import (
 )
 
 func TestVersion(t *testing.T) {
-	assert.True(t, semver.IsValid(Version))
+	assert.True(t, semver.IsValid(version))
 	parts := strings.Split(SDKVersion, "-")
 	assert.Len(t, parts, 2)
 	assert.Equal(t, "go", parts[0])
