@@ -39,7 +39,6 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rjeczalik/notify v0.9.3
 	github.com/stretchr/testify v1.8.0
-	golang.org/x/mod v0.12.0
 	golang.org/x/net v0.10.0
 	google.golang.org/protobuf v1.31.0
 	gopkg.in/yaml.v3 v3.0.1

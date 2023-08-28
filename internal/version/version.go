@@ -17,23 +17,28 @@ package version
 import (
 	_ "embed"
 	"fmt"
-	"strings"
+	"runtime/debug"
+)
+
+const (
+	unknownVersion = "unknown"
 )
 
 var (
-	//go:embed version.txt
-	embedVersion string
-	version      = readVersion()
-	SDKVersion   = fmt.Sprintf("go-%s", version)
+	SDKVersion = readVersion()
 )
 
 func readVersion() string {
-	v := strings.TrimSpace(embedVersion)
-	if len(v) == 0 {
-		return "unknown"
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return fmt.Sprintf("go-%s", unknownVersion)
 	}
-	if strings.HasPrefix(v, "v") {
-		return v
+	ret := info.GoVersion
+	for _, dep := range info.Deps {
+		if dep.Path == "github.com/lekkodev/go-sdk" {
+			ret += "-" + dep.Version
+			break
+		}
 	}
-	return fmt.Sprintf("v%s", v)
+	return ret
 }

@@ -19,13 +19,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/mod/semver"
 )
 
 func TestVersion(t *testing.T) {
-	assert.True(t, semver.IsValid(version))
-	parts := strings.Split(SDKVersion, "-")
-	assert.Len(t, parts, 2)
-	assert.Equal(t, "go", parts[0])
-	assert.True(t, semver.IsValid(parts[1]))
+	assert.True(t, strings.HasPrefix(SDKVersion, "go"))
 }
