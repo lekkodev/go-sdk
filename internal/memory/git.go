@@ -43,6 +43,7 @@ func NewGitStore(
 	apiKey, url, ownerName, repoName, path string,
 	client *http.Client,
 	port int32,
+	sdkVersion string,
 ) (Store, error) {
 	var distClient backendv1beta1connect.DistributionServiceClient
 	if len(apiKey) > 0 {
@@ -60,6 +61,7 @@ func NewGitStore(
 		storer, fs, distClient,
 		eventsBatchSize, true,
 		port,
+		sdkVersion,
 	)
 }
 
@@ -68,7 +70,7 @@ func newGitStore(
 	apiKey, ownerName, repoName string,
 	storer storage.Storer, fs billy.Filesystem,
 	distClient backendv1beta1connect.DistributionServiceClient,
-	eventsBatchSize int, watch bool, port int32,
+	eventsBatchSize int, watch bool, port int32, sdkVersion string,
 ) (*gitStore, error) {
 	g := &gitStore{
 		distClient: distClient,
@@ -77,9 +79,10 @@ func newGitStore(
 			OwnerName: ownerName,
 			RepoName:  repoName,
 		},
-		apiKey: apiKey,
-		storer: storer,
-		fs:     fs,
+		apiKey:     apiKey,
+		storer:     storer,
+		fs:         fs,
+		sdkVersion: sdkVersion,
 	}
 	if distClient != nil {
 		// register with lekko backend
@@ -117,6 +120,7 @@ type gitStore struct {
 	storer             storage.Storer
 	fs                 billy.Filesystem
 	server             *sdkServer
+	sdkVersion         string
 }
 
 func (g *gitStore) registerWithBackoff(ctx context.Context) (string, error) {
@@ -126,7 +130,7 @@ func (g *gitStore) registerWithBackoff(ctx context.Context) (string, error) {
 	req := connect.NewRequest(&backendv1beta1.RegisterClientRequest{
 		RepoKey:        g.repoKey,
 		NamespaceList:  []string{}, // register all namespaces
-		SidecarVersion: sdkVersion,
+		SidecarVersion: g.sdkVersion,
 	})
 	setAPIKey(req, g.apiKey)
 	var resp *connect.Response[backendv1beta1.RegisterClientResponse]
