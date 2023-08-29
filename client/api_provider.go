@@ -170,7 +170,7 @@ func (a *apiProvider) Close(ctx context.Context) error {
 	return err
 }
 
-func (a *apiProvider) GetBoolFeature(ctx context.Context, key string, namespace string) (bool, error) {
+func (a *apiProvider) GetBool(ctx context.Context, key string, namespace string) (bool, error) {
 	lc, err := toProto(fromContext(ctx))
 	if err != nil {
 		return false, errors.Wrap(err, "error transforming context")
@@ -189,7 +189,7 @@ func (a *apiProvider) GetBoolFeature(ctx context.Context, key string, namespace 
 	return resp.Msg.GetValue(), nil
 }
 
-func (a *apiProvider) GetIntFeature(ctx context.Context, key string, namespace string) (int64, error) {
+func (a *apiProvider) GetInt(ctx context.Context, key string, namespace string) (int64, error) {
 	lc, err := toProto(fromContext(ctx))
 	if err != nil {
 		return 0, errors.Wrap(err, "error transforming context")
@@ -208,7 +208,7 @@ func (a *apiProvider) GetIntFeature(ctx context.Context, key string, namespace s
 	return resp.Msg.GetValue(), nil
 }
 
-func (a *apiProvider) GetFloatFeature(ctx context.Context, key string, namespace string) (float64, error) {
+func (a *apiProvider) GetFloat(ctx context.Context, key string, namespace string) (float64, error) {
 	lc, err := toProto(fromContext(ctx))
 	if err != nil {
 		return 0, errors.Wrap(err, "error transforming context")
@@ -227,7 +227,7 @@ func (a *apiProvider) GetFloatFeature(ctx context.Context, key string, namespace
 	return resp.Msg.GetValue(), nil
 }
 
-func (a *apiProvider) GetStringFeature(ctx context.Context, key string, namespace string) (string, error) {
+func (a *apiProvider) GetString(ctx context.Context, key string, namespace string) (string, error) {
 	lc, err := toProto(fromContext(ctx))
 	if err != nil {
 		return "", errors.Wrap(err, "error transforming context")
@@ -246,7 +246,7 @@ func (a *apiProvider) GetStringFeature(ctx context.Context, key string, namespac
 	return resp.Msg.GetValue(), nil
 }
 
-func (a *apiProvider) GetProtoFeature(ctx context.Context, key string, namespace string, result proto.Message) error {
+func (a *apiProvider) GetProto(ctx context.Context, key string, namespace string, result proto.Message) error {
 	lc, err := toProto(fromContext(ctx))
 	if err != nil {
 		return errors.Wrap(err, "error transforming context")
@@ -272,7 +272,7 @@ func (a *apiProvider) GetProtoFeature(ctx context.Context, key string, namespace
 	return resp.Msg.GetValue().UnmarshalTo(result)
 }
 
-func (a *apiProvider) GetJSONFeature(ctx context.Context, key string, namespace string, result interface{}) error {
+func (a *apiProvider) GetJSON(ctx context.Context, key string, namespace string, result interface{}) error {
 	lc, err := toProto(fromContext(ctx))
 	if err != nil {
 		return errors.Wrap(err, "error transforming context")

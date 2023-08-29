@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This package governs the specifics of a feature, like what individual
-// files make up a feature.
+// This package governs the specifics of a config, like what individual
+// files make up a config.
 package eval
 
 import (
@@ -25,15 +25,15 @@ import (
 	"github.com/pkg/errors"
 )
 
-type EvaluableFeature interface {
-	// Evaluate Feature returns a protobuf.Any.
+type EvaluableConfig interface {
+	// Evaluate returns a protobuf.Any.
 	// For user defined protos, we shouldn't attempt to Unmarshal
 	// this unless we know the type. For primitive types, we can
 	// safely unmarshal into BoolValue, StringValue, etc.
 	Evaluate(featureCtx map[string]interface{}) (*anypb.Any, ResultPath, error)
-	// Returns the feature type (bool, string, json, proto, etc)
+	// Returns the config type (bool, string, json, proto, etc)
 	// or "" if the type is not supported
-	Type() FeatureType
+	Type() ConfigType
 }
 
 // Stores the path of the tree node that returned the final value
@@ -45,16 +45,16 @@ type v1beta3 struct {
 	namespace string
 }
 
-func NewV1Beta3(f *featurev1beta1.Feature, namespace string) EvaluableFeature {
+func NewV1Beta3(f *featurev1beta1.Feature, namespace string) EvaluableConfig {
 	return &v1beta3{f, namespace}
 }
 
-func (v1b3 *v1beta3) Type() FeatureType {
-	return FeatureTypeFromProto(v1b3.GetType())
+func (v1b3 *v1beta3) Type() ConfigType {
+	return ConfigTypeFromProto(v1b3.GetType())
 }
 
-func (v1b3 *v1beta3) Evaluate(featureCtx map[string]interface{}) (*anypb.Any, ResultPath, error) {
-	return v1b3.evaluate(featureCtx)
+func (v1b3 *v1beta3) Evaluate(lekkoCtx map[string]interface{}) (*anypb.Any, ResultPath, error) {
+	return v1b3.evaluate(lekkoCtx)
 }
 
 func (v1b3 *v1beta3) evaluate(context map[string]interface{}) (*anypb.Any, []int, error) {
@@ -73,8 +73,8 @@ func (v1b3 *v1beta3) evaluate(context map[string]interface{}) (*anypb.Any, []int
 	return v1b3.GetTree().Default, []int{}, nil
 }
 
-func (v1b3 *v1beta3) traverse(constraint *featurev1beta1.Constraint, featureCtx map[string]interface{}) (*anypb.Any, bool, []int, error) {
-	passes, err := v1b3.evaluateRule(constraint.GetRuleAstNew(), featureCtx)
+func (v1b3 *v1beta3) traverse(constraint *featurev1beta1.Constraint, lekkoCtx map[string]interface{}) (*anypb.Any, bool, []int, error) {
+	passes, err := v1b3.evaluateRule(constraint.GetRuleAstNew(), lekkoCtx)
 	if err != nil {
 		return nil, false, []int{}, errors.Wrap(err, "processing")
 	}
@@ -85,7 +85,7 @@ func (v1b3 *v1beta3) traverse(constraint *featurev1beta1.Constraint, featureCtx 
 	// rule passed
 	retVal := constraint.Value // may be null
 	for i, child := range constraint.GetConstraints() {
-		childVal, childPasses, childPath, err := v1b3.traverse(child, featureCtx)
+		childVal, childPasses, childPath, err := v1b3.traverse(child, lekkoCtx)
 		if err != nil {
 			return nil, false, []int{}, errors.Wrapf(err, "traverse %d", i)
 		}
@@ -102,8 +102,8 @@ func (v1b3 *v1beta3) traverse(constraint *featurev1beta1.Constraint, featureCtx 
 	return retVal, passes, []int{}, nil
 }
 
-func (v1b3 *v1beta3) evaluateRule(ruleV3 *rulesv1beta3.Rule, featureCtx map[string]interface{}) (bool, error) {
-	passes, err := rules.NewV1Beta3(ruleV3, rules.EvalContext{Namespace: v1b3.namespace, FeatureName: v1b3.Key}).EvaluateRule(featureCtx)
+func (v1b3 *v1beta3) evaluateRule(ruleV3 *rulesv1beta3.Rule, lekkoCtx map[string]interface{}) (bool, error) {
+	passes, err := rules.NewV1Beta3(ruleV3, rules.EvalContext{Namespace: v1b3.namespace, FeatureName: v1b3.Key}).EvaluateRule(lekkoCtx)
 	if err != nil {
 		return false, errors.Wrap(err, "evaluating rule v3")
 	}

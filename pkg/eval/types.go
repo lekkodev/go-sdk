@@ -19,76 +19,76 @@ import (
 )
 
 // Indicates the lekko-specific types that are allowed in feature flags.
-type FeatureType string
+type ConfigType string
 
 const (
-	FeatureTypeBool   FeatureType = "bool"
-	FeatureTypeInt    FeatureType = "int"
-	FeatureTypeFloat  FeatureType = "float"
-	FeatureTypeString FeatureType = "string"
-	FeatureTypeProto  FeatureType = "proto"
-	FeatureTypeJSON   FeatureType = "json"
+	ConfigTypeBool   ConfigType = "bool"
+	ConfigTypeInt    ConfigType = "int"
+	ConfigTypeFloat  ConfigType = "float"
+	ConfigTypeString ConfigType = "string"
+	ConfigTypeProto  ConfigType = "proto"
+	ConfigTypeJSON   ConfigType = "json"
 )
 
-func FeatureTypes() []string {
+func ConfigTypes() []string {
 	var ret []string
-	for _, ftype := range []FeatureType{
-		FeatureTypeBool,
-		FeatureTypeString,
-		FeatureTypeInt,
-		FeatureTypeFloat,
-		FeatureTypeJSON,
-		FeatureTypeProto,
+	for _, ctype := range []ConfigType{
+		ConfigTypeBool,
+		ConfigTypeString,
+		ConfigTypeInt,
+		ConfigTypeFloat,
+		ConfigTypeJSON,
+		ConfigTypeProto,
 	} {
-		ret = append(ret, string(ftype))
+		ret = append(ret, string(ctype))
 	}
 	return ret
 }
 
-func (ft FeatureType) ToProto() featurev1beta1.FeatureType {
+func (ft ConfigType) ToProto() featurev1beta1.FeatureType {
 	switch ft {
-	case FeatureTypeBool:
+	case ConfigTypeBool:
 		return featurev1beta1.FeatureType_FEATURE_TYPE_BOOL
-	case FeatureTypeInt:
+	case ConfigTypeInt:
 		return featurev1beta1.FeatureType_FEATURE_TYPE_INT
-	case FeatureTypeFloat:
+	case ConfigTypeFloat:
 		return featurev1beta1.FeatureType_FEATURE_TYPE_FLOAT
-	case FeatureTypeString:
+	case ConfigTypeString:
 		return featurev1beta1.FeatureType_FEATURE_TYPE_STRING
-	case FeatureTypeJSON:
+	case ConfigTypeJSON:
 		return featurev1beta1.FeatureType_FEATURE_TYPE_JSON
-	case FeatureTypeProto:
+	case ConfigTypeProto:
 		return featurev1beta1.FeatureType_FEATURE_TYPE_PROTO
 	default:
 		return featurev1beta1.FeatureType_FEATURE_TYPE_UNSPECIFIED
 	}
 }
 
-func (ft FeatureType) IsPrimitive() bool {
-	primitiveTypes := map[FeatureType]struct{}{
-		FeatureTypeBool:   {},
-		FeatureTypeString: {},
-		FeatureTypeInt:    {},
-		FeatureTypeFloat:  {},
+func (ft ConfigType) IsPrimitive() bool {
+	primitiveTypes := map[ConfigType]struct{}{
+		ConfigTypeBool:   {},
+		ConfigTypeString: {},
+		ConfigTypeInt:    {},
+		ConfigTypeFloat:  {},
 	}
 	_, ok := primitiveTypes[ft]
 	return ok
 }
 
-func FeatureTypeFromProto(ft featurev1beta1.FeatureType) FeatureType {
+func ConfigTypeFromProto(ft featurev1beta1.FeatureType) ConfigType {
 	switch ft {
 	case featurev1beta1.FeatureType_FEATURE_TYPE_BOOL:
-		return FeatureTypeBool
+		return ConfigTypeBool
 	case featurev1beta1.FeatureType_FEATURE_TYPE_INT:
-		return FeatureTypeInt
+		return ConfigTypeInt
 	case featurev1beta1.FeatureType_FEATURE_TYPE_FLOAT:
-		return FeatureTypeFloat
+		return ConfigTypeFloat
 	case featurev1beta1.FeatureType_FEATURE_TYPE_STRING:
-		return FeatureTypeString
+		return ConfigTypeString
 	case featurev1beta1.FeatureType_FEATURE_TYPE_JSON:
-		return FeatureTypeJSON
+		return ConfigTypeJSON
 	case featurev1beta1.FeatureType_FEATURE_TYPE_PROTO:
-		return FeatureTypeProto
+		return ConfigTypeProto
 	default:
 		return ""
 	}

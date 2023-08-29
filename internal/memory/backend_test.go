@@ -45,12 +45,12 @@ func repositoryContents() *backendv1beta1.GetRepositoryContentsResponse {
 			{
 				Name: "ns-1",
 				Features: []*backendv1beta1.Feature{
-					testdata.Feature(featurev1beta1.FeatureType_FEATURE_TYPE_BOOL, true),
-					testdata.Feature(featurev1beta1.FeatureType_FEATURE_TYPE_STRING, "foo"),
-					testdata.Feature(featurev1beta1.FeatureType_FEATURE_TYPE_FLOAT, float64(1.2)),
-					testdata.Feature(featurev1beta1.FeatureType_FEATURE_TYPE_INT, int64(42)),
-					testdata.Feature(featurev1beta1.FeatureType_FEATURE_TYPE_JSON, []any{1, 2.5, "bar"}),
-					testdata.Feature(featurev1beta1.FeatureType_FEATURE_TYPE_PROTO, wrapperspb.Int32(58)),
+					testdata.Config(featurev1beta1.FeatureType_FEATURE_TYPE_BOOL, true),
+					testdata.Config(featurev1beta1.FeatureType_FEATURE_TYPE_STRING, "foo"),
+					testdata.Config(featurev1beta1.FeatureType_FEATURE_TYPE_FLOAT, float64(1.2)),
+					testdata.Config(featurev1beta1.FeatureType_FEATURE_TYPE_INT, int64(42)),
+					testdata.Config(featurev1beta1.FeatureType_FEATURE_TYPE_JSON, []any{1, 2.5, "bar"}),
+					testdata.Config(featurev1beta1.FeatureType_FEATURE_TYPE_PROTO, wrapperspb.Int32(58)),
 				},
 			},
 		},

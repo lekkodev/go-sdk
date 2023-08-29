@@ -109,63 +109,63 @@ func testProvider(backendCli *testBackendClient) Provider {
 	}
 }
 
-func TestGetBoolFeature(t *testing.T) {
+func TestGetBoolConfig(t *testing.T) {
 	// success
 	ctx := context.Background()
 	cli := testProvider(&testBackendClient{boolVal: true})
-	result, err := cli.GetBoolFeature(ctx, "test_key", "namespace")
+	result, err := cli.GetBool(ctx, "test_key", "namespace")
 	assert.NoError(t, err)
 	assert.True(t, result)
 
 	// test passing up backend error
 	cli = testProvider(&testBackendClient{err: errors.New("error")})
-	_, err = cli.GetBoolFeature(ctx, "test_key", "namespace")
+	_, err = cli.GetBool(ctx, "test_key", "namespace")
 	assert.Error(t, err)
 }
 
-func TestGetIntFeature(t *testing.T) {
+func TestGetIntConfig(t *testing.T) {
 	// success
 	ctx := context.Background()
 	cli := testProvider(&testBackendClient{intVal: 8})
-	result, err := cli.GetIntFeature(ctx, "test_key", "namespace")
+	result, err := cli.GetInt(ctx, "test_key", "namespace")
 	assert.NoError(t, err)
 	assert.Equal(t, int64(8), result)
 
 	// test passing up backend error
 	cli = testProvider(&testBackendClient{err: errors.New("error")})
-	_, err = cli.GetIntFeature(ctx, "test_key", "namespace")
+	_, err = cli.GetInt(ctx, "test_key", "namespace")
 	assert.Error(t, err)
 }
 
-func TestGetFloatFeature(t *testing.T) {
+func TestGetFloatConfig(t *testing.T) {
 	// success
 	ctx := context.Background()
 	cli := testProvider(&testBackendClient{floatVal: 8.89})
-	result, err := cli.GetFloatFeature(ctx, "test_key", "namespace")
+	result, err := cli.GetFloat(ctx, "test_key", "namespace")
 	assert.NoError(t, err)
 	assert.Equal(t, 8.89, result)
 
 	// test passing up backend error
 	cli = testProvider(&testBackendClient{err: errors.New("error")})
-	_, err = cli.GetFloatFeature(ctx, "test_key", "namespace")
+	_, err = cli.GetFloat(ctx, "test_key", "namespace")
 	assert.Error(t, err)
 }
 
-func TestGetStringFeature(t *testing.T) {
+func TestGetStringConfig(t *testing.T) {
 	// success
 	ctx := context.Background()
 	cli := testProvider(&testBackendClient{stringVal: "foo"})
-	result, err := cli.GetStringFeature(ctx, "test_key", "namespace")
+	result, err := cli.GetString(ctx, "test_key", "namespace")
 	assert.NoError(t, err)
 	assert.Equal(t, "foo", result)
 
 	// test passing up backend error
 	cli = testProvider(&testBackendClient{err: errors.New("error")})
-	_, err = cli.GetStringFeature(ctx, "test_key", "namespace")
+	_, err = cli.GetString(ctx, "test_key", "namespace")
 	assert.Error(t, err)
 }
 
-func TestGetProtoFeature(t *testing.T) {
+func TestGetProtoConfig(t *testing.T) {
 	protoProvider := func(version string, p proto.Message, err error) Provider {
 		if version == "v1" {
 			return testProvider(&testBackendClient{protoVal: p, err: err})
@@ -180,17 +180,17 @@ func TestGetProtoFeature(t *testing.T) {
 			ctx := context.Background()
 			cli := protoProvider(version, wrapperspb.Int64(59), nil)
 			result := &wrapperspb.Int64Value{}
-			require.NoError(t, cli.GetProtoFeature(ctx, "test_key", "namespace", result))
+			require.NoError(t, cli.GetProto(ctx, "test_key", "namespace", result))
 			assert.EqualValues(t, int64(59), result.Value)
 
 			// test passing up backend error
 			cli = protoProvider(version, wrapperspb.Int64(59), errors.New("error"))
-			assert.Error(t, cli.GetProtoFeature(ctx, "test_key", "namespace", result))
+			assert.Error(t, cli.GetProto(ctx, "test_key", "namespace", result))
 
 			// type mismatch in proto value
 			cli = protoProvider(version, wrapperspb.Int64(59), nil)
 			badResult := &wrapperspb.BoolValue{Value: true}
-			assert.Error(t, cli.GetProtoFeature(ctx, "test_key", "namespace", badResult))
+			assert.Error(t, cli.GetProto(ctx, "test_key", "namespace", badResult))
 			// Note: the value of badResult is now undefined and api
 			// behavior may change, so it should not be depended on
 		})
@@ -200,7 +200,7 @@ func TestGetProtoFeature(t *testing.T) {
 func TestUnsupportedContextType(t *testing.T) {
 	ctx := Add(context.Background(), "foo", []string{})
 	cli := testProvider(&testBackendClient{boolVal: true})
-	_, err := cli.GetBoolFeature(ctx, "test_key", "namespace")
+	_, err := cli.GetBool(ctx, "test_key", "namespace")
 	require.Error(t, err)
 }
 
@@ -213,7 +213,7 @@ type testStruct struct {
 	Bar *barType `json:"bar"`
 }
 
-func TestGetJSONFeature(t *testing.T) {
+func TestGetJSONConfig(t *testing.T) {
 	// success
 	ctx := context.Background()
 	ts := &testStruct{Foo: 1, Bar: &barType{Baz: 12}}
@@ -221,38 +221,38 @@ func TestGetJSONFeature(t *testing.T) {
 	require.NoError(t, err)
 	cli := testProvider(&testBackendClient{jsonVal: bytes})
 	result := &testStruct{}
-	require.NoError(t, cli.GetJSONFeature(ctx, "test_key", "namespace", result))
+	require.NoError(t, cli.GetJSON(ctx, "test_key", "namespace", result))
 	assert.EqualValues(t, ts, result)
 
 	// test passing up backend error
 	cli = testProvider(&testBackendClient{jsonVal: bytes, err: errors.New("error")})
-	assert.Error(t, cli.GetJSONFeature(ctx, "test_key", "namespace", result))
+	assert.Error(t, cli.GetJSON(ctx, "test_key", "namespace", result))
 
 	// type mismatch in result
 	cli = testProvider(&testBackendClient{jsonVal: bytes})
 	badResult := new(int)
-	assert.Error(t, cli.GetJSONFeature(ctx, "test_key", "namespace", badResult))
+	assert.Error(t, cli.GetJSON(ctx, "test_key", "namespace", badResult))
 }
 
-func TestGetJSONFeatureArr(t *testing.T) {
+func TestGetJSONConfigArr(t *testing.T) {
 	ctx := context.Background()
 	ts := []int{1, 2, 3}
 	bytes, err := json.Marshal(&ts)
 	require.NoError(t, err)
 	cli := testProvider(&testBackendClient{jsonVal: bytes})
 	result := []int{45}
-	require.NoError(t, cli.GetJSONFeature(ctx, "test_key", "namespace", &result))
+	require.NoError(t, cli.GetJSON(ctx, "test_key", "namespace", &result))
 	assert.EqualValues(t, ts, result)
 }
 
-func TestGetJSONFeatureError(t *testing.T) {
+func TestGetJSONConfigError(t *testing.T) {
 	ctx := context.Background()
 	ts := []int{1, 2, 3}
 	bytes, err := json.Marshal(&ts)
 	require.NoError(t, err)
 	cli := testProvider(&testBackendClient{jsonVal: bytes})
 	result := []string{"foo"}
-	err = cli.GetJSONFeature(ctx, "test_key", "namespace", &result)
+	err = cli.GetJSON(ctx, "test_key", "namespace", &result)
 	assert.Error(t, err)
 	// Note: the value of &result is now undefined and api
 	// behavior may change, so it should not be depended on

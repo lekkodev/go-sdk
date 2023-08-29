@@ -21,9 +21,6 @@ import (
 	clientv1beta1 "buf.build/gen/go/lekkodev/sdk/protocolbuffers/go/lekko/client/v1beta1"
 )
 
-// TODO: we need a better name that's not 'context'. Conditions? Features? Values?
-// 'context' is overloaded in go.
-
 // lekkoContext is the type of the value stored in the context
 type lekkoContext map[string]interface{}
 
@@ -36,7 +33,7 @@ type lekkoKey int
 var lekkoKeyV1 lekkoKey
 
 // Merge allows you to pass arbitrary context variables in order to perform
-// rules evaluation on your feature flags in real time.
+// rules evaluation on your configs in real time.
 // Priority is given to newly added keys in lekkoCtx.
 // TODO: allow users to run in safe mode, which will throw errors on ctx conflicts.
 // TODO: this is not thread-safe, make it thread-safe.

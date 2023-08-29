@@ -27,10 +27,10 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func ValToAny(featureType featurev1beta1.FeatureType, v any) *anypb.Any {
+func ValToAny(configType featurev1beta1.FeatureType, v any) *anypb.Any {
 	var err error
 	dest := &anypb.Any{}
-	switch featureType {
+	switch configType {
 	case featurev1beta1.FeatureType_FEATURE_TYPE_BOOL:
 		tv, ok := v.(bool)
 		if !ok {
@@ -72,7 +72,7 @@ func ValToAny(featureType featurev1beta1.FeatureType, v any) *anypb.Any {
 		}
 		err = anypb.MarshalFrom(dest, sv, proto.MarshalOptions{})
 	default:
-		err = errors.Errorf("unknown feature type %v", featureType)
+		err = errors.Errorf("unknown feature type %v", configType)
 	}
 	if err != nil {
 		panic(err)
@@ -80,7 +80,7 @@ func ValToAny(featureType featurev1beta1.FeatureType, v any) *anypb.Any {
 	return dest
 }
 
-func Feature(ft featurev1beta1.FeatureType, value any) *backendv1beta1.Feature {
+func Config(ft featurev1beta1.FeatureType, value any) *backendv1beta1.Feature {
 	a := ValToAny(ft, value)
 	parts := strings.Split(ft.String(), "_")
 	name := strings.ToLower(parts[len(parts)-1])
