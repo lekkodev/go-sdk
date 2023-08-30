@@ -106,13 +106,11 @@ type cachedProvider struct {
 	store memory.Store
 }
 
-// Close implements Provider.
 func (cp *cachedProvider) Close(ctx context.Context) error {
 	return cp.store.Close(ctx)
 }
 
-// GetBoolFeature implements Provider.
-func (cp *cachedProvider) GetBoolFeature(ctx context.Context, key string, namespace string) (bool, error) {
+func (cp *cachedProvider) GetBool(ctx context.Context, key string, namespace string) (bool, error) {
 	dest := &wrapperspb.BoolValue{}
 	if err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest); err != nil {
 		return false, err
@@ -120,8 +118,7 @@ func (cp *cachedProvider) GetBoolFeature(ctx context.Context, key string, namesp
 	return dest.GetValue(), nil
 }
 
-// GetFloatFeature implements Provider.
-func (cp *cachedProvider) GetFloatFeature(ctx context.Context, key string, namespace string) (float64, error) {
+func (cp *cachedProvider) GetFloat(ctx context.Context, key string, namespace string) (float64, error) {
 	dest := &wrapperspb.DoubleValue{}
 	if err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest); err != nil {
 		return 0, err
@@ -129,8 +126,7 @@ func (cp *cachedProvider) GetFloatFeature(ctx context.Context, key string, names
 	return dest.GetValue(), nil
 }
 
-// GetIntFeature implements Provider.
-func (cp *cachedProvider) GetIntFeature(ctx context.Context, key string, namespace string) (int64, error) {
+func (cp *cachedProvider) GetInt(ctx context.Context, key string, namespace string) (int64, error) {
 	dest := &wrapperspb.Int64Value{}
 	if err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest); err != nil {
 		return 0, err
@@ -138,8 +134,7 @@ func (cp *cachedProvider) GetIntFeature(ctx context.Context, key string, namespa
 	return dest.GetValue(), nil
 }
 
-// GetJSONFeature implements Provider.
-func (cp *cachedProvider) GetJSONFeature(ctx context.Context, key string, namespace string, result interface{}) error {
+func (cp *cachedProvider) GetJSON(ctx context.Context, key string, namespace string, result interface{}) error {
 	dest := &structpb.Value{}
 	if err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest); err != nil {
 		return err
@@ -154,13 +149,11 @@ func (cp *cachedProvider) GetJSONFeature(ctx context.Context, key string, namesp
 	return nil
 }
 
-// GetProtoFeature implements Provider.
-func (cp *cachedProvider) GetProtoFeature(ctx context.Context, key string, namespace string, result protoreflect.ProtoMessage) error {
+func (cp *cachedProvider) GetProto(ctx context.Context, key string, namespace string, result protoreflect.ProtoMessage) error {
 	return cp.store.Evaluate(key, namespace, fromContext(ctx), result)
 }
 
-// GetStringFeature implements Provider.
-func (cp *cachedProvider) GetStringFeature(ctx context.Context, key string, namespace string) (string, error) {
+func (cp *cachedProvider) GetString(ctx context.Context, key string, namespace string) (string, error) {
 	dest := &wrapperspb.StringValue{}
 	if err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest); err != nil {
 		return "", err

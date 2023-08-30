@@ -27,6 +27,8 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
+var ns = "test-ns"
+
 func TestTestClient(t *testing.T) {
 	// proto
 	protoValue := durationpb.New(time.Hour)
@@ -38,42 +40,42 @@ func TestTestClient(t *testing.T) {
 	require.NoError(t, err)
 
 	testClient := NewTestClient().
-		WithBool("bool-feature", true).
-		WithProto("proto-feature", protoBytes).
-		WithJSON("json-feature", jsonBytes).
-		WithString("repeat-key", "foo").
-		WithError("repeat-key", errors.New("error")).
-		WithFloat("float-feature", 1.0).
-		WithInt("int-feature", 9)
+		WithBool(ns, "bool-config", true).
+		WithProto(ns, "proto-config", protoBytes).
+		WithJSON(ns, "json-config", jsonBytes).
+		WithString(ns, "repeat-key", "foo").
+		WithError(ns, "repeat-key", errors.New("error")).
+		WithFloat(ns, "float-config", 1.0).
+		WithInt(ns, "int-config", 9)
 
 	ctx := context.Background()
 
-	result, err := testClient.GetBool(ctx, "bool-feature")
+	result, err := testClient.GetBool(ctx, ns, "bool-config")
 	assert.NoError(t, err)
 	assert.True(t, result)
 
 	protoResult := &durationpb.Duration{}
-	assert.NoError(t, testClient.GetProto(ctx, "proto-feature", protoResult))
+	assert.NoError(t, testClient.GetProto(ctx, ns, "proto-config", protoResult))
 	assert.True(t, proto.Equal(protoValue, protoResult))
 
 	jsonResult := []int{}
-	assert.NoError(t, testClient.GetJSON(ctx, "json-feature", &jsonResult))
+	assert.NoError(t, testClient.GetJSON(ctx, ns, "json-config", &jsonResult))
 	assert.Equal(t, jsonValue, jsonResult)
 
-	_, err = testClient.GetString(ctx, "repeat-key")
+	_, err = testClient.GetString(ctx, ns, "repeat-key")
 	assert.Error(t, err)
 
-	_, err = testClient.GetInt(ctx, "bool-feature")
+	_, err = testClient.GetInt(ctx, ns, "bool-config")
 	assert.Error(t, err, "expecting type mismatch")
 
-	intResult, err := testClient.GetInt(ctx, "int-feature")
+	intResult, err := testClient.GetInt(ctx, ns, "int-config")
 	assert.NoError(t, err)
 	assert.Equal(t, int64(9), intResult)
 
-	floatResult, err := testClient.GetFloat(ctx, "float-feature")
+	floatResult, err := testClient.GetFloat(ctx, ns, "float-config")
 	assert.NoError(t, err)
 	assert.Equal(t, 1.0, floatResult)
 
-	_, err = testClient.GetBool(ctx, "not-found")
+	_, err = testClient.GetBool(ctx, ns, "not-found")
 	assert.Error(t, err, "expecting not found error")
 }

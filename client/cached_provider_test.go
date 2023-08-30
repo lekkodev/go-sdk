@@ -30,17 +30,17 @@ import (
 
 func makeConfigs() map[string]*anypb.Any {
 	ret := make(map[string]*anypb.Any)
-	bf := testdata.Feature(featurev1beta1.FeatureType_FEATURE_TYPE_BOOL, true)
+	bf := testdata.Config(featurev1beta1.FeatureType_FEATURE_TYPE_BOOL, true)
 	ret["bool"] = bf.GetFeature().GetTree().GetDefault()
-	sf := testdata.Feature(featurev1beta1.FeatureType_FEATURE_TYPE_STRING, "foo")
+	sf := testdata.Config(featurev1beta1.FeatureType_FEATURE_TYPE_STRING, "foo")
 	ret["string"] = sf.GetFeature().GetTree().GetDefault()
-	intf := testdata.Feature(featurev1beta1.FeatureType_FEATURE_TYPE_INT, int64(42))
+	intf := testdata.Config(featurev1beta1.FeatureType_FEATURE_TYPE_INT, int64(42))
 	ret["int"] = intf.GetFeature().GetTree().GetDefault()
-	ff := testdata.Feature(featurev1beta1.FeatureType_FEATURE_TYPE_FLOAT, float64(1.2))
+	ff := testdata.Config(featurev1beta1.FeatureType_FEATURE_TYPE_FLOAT, float64(1.2))
 	ret["float"] = ff.GetFeature().GetTree().GetDefault()
-	jf := testdata.Feature(featurev1beta1.FeatureType_FEATURE_TYPE_JSON, []any{1.0, 2.0})
+	jf := testdata.Config(featurev1beta1.FeatureType_FEATURE_TYPE_JSON, []any{1.0, 2.0})
 	ret["json"] = jf.GetFeature().GetTree().GetDefault()
-	pf := testdata.Feature(featurev1beta1.FeatureType_FEATURE_TYPE_PROTO, wrapperspb.Int32(58))
+	pf := testdata.Config(featurev1beta1.FeatureType_FEATURE_TYPE_PROTO, wrapperspb.Int32(58))
 	ret["proto"] = pf.GetFeature().GetTree().GetDefault()
 	return ret
 }
@@ -53,24 +53,24 @@ func TestInMemoryProviderSuccess(t *testing.T) {
 	}
 	ctx := context.Background()
 	// happy paths
-	br, err := im.GetBoolFeature(ctx, "bool", "")
+	br, err := im.GetBool(ctx, "bool", "")
 	require.NoError(t, err)
 	assert.True(t, br)
-	sr, err := im.GetStringFeature(ctx, "string", "")
+	sr, err := im.GetString(ctx, "string", "")
 	require.NoError(t, err)
 	assert.Equal(t, "foo", sr)
-	ir, err := im.GetIntFeature(ctx, "int", "")
+	ir, err := im.GetInt(ctx, "int", "")
 	require.NoError(t, err)
 	assert.Equal(t, int64(42), ir)
-	fr, err := im.GetFloatFeature(ctx, "float", "")
+	fr, err := im.GetFloat(ctx, "float", "")
 	require.NoError(t, err)
 	assert.Equal(t, float64(1.2), fr)
 	var result []any
-	err = im.GetJSONFeature(ctx, "json", "", &result)
+	err = im.GetJSON(ctx, "json", "", &result)
 	require.NoError(t, err)
 	assert.EqualValues(t, []any{1.0, 2.0}, result)
 	protoResult := &wrapperspb.Int32Value{}
-	err = im.GetProtoFeature(ctx, "proto", "", protoResult)
+	err = im.GetProto(ctx, "proto", "", protoResult)
 	require.NoError(t, err)
 	assert.EqualValues(t, int32(58), protoResult.Value)
 	require.NoError(t, im.Close(ctx), "no error during close")
@@ -83,29 +83,29 @@ func TestInMemoryProviderTypeMismatch(t *testing.T) {
 		},
 	}
 	ctx := context.Background()
-	_, err := im.GetStringFeature(ctx, "bool", "")
+	_, err := im.GetString(ctx, "bool", "")
 	require.Error(t, err)
-	_, err = im.GetIntFeature(ctx, "bool", "")
+	_, err = im.GetInt(ctx, "bool", "")
 	require.Error(t, err)
-	_, err = im.GetFloatFeature(ctx, "bool", "")
+	_, err = im.GetFloat(ctx, "bool", "")
 	require.Error(t, err)
 	var result bool
-	err = im.GetJSONFeature(ctx, "bool", "", &result)
+	err = im.GetJSON(ctx, "bool", "", &result)
 	require.Error(t, err)
 	protoResult := &wrapperspb.FloatValue{}
-	err = im.GetProtoFeature(ctx, "bool", "", protoResult)
+	err = im.GetProto(ctx, "bool", "", protoResult)
 	require.Error(t, err)
 	require.NoError(t, im.Close(ctx), "no error during close")
 }
 
-func TestInMemoryProviderMissingFeature(t *testing.T) {
+func TestInMemoryProviderMissingConfig(t *testing.T) {
 	im := &cachedProvider{
 		store: &testStore{
 			configs: makeConfigs(),
 		},
 	}
 	ctx := context.Background()
-	_, err := im.GetBoolFeature(ctx, "missing", "")
+	_, err := im.GetBool(ctx, "missing", "")
 	require.Error(t, err)
 	require.NoError(t, im.Close(ctx), "no error during close")
 }

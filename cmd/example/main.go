@@ -51,20 +51,20 @@ func main() {
 		log.Fatalf("error when starting in %s mode: %v\n", mode, err)
 	}
 
-	cl, closeF := client.NewClient(namespace, provider)
+	cl, closeF := client.NewClient(provider)
 	defer func() {
 		_ = closeF(context.Background())
 	}()
 	var result any
 	switch cfgType {
 	case "string":
-		result, err = cl.GetString(ctx, config)
+		result, err = cl.GetString(ctx, namespace, config)
 	case "int":
-		result, err = cl.GetInt(ctx, config)
+		result, err = cl.GetInt(ctx, namespace, config)
 	case "float":
-		result, err = cl.GetFloat(ctx, config)
+		result, err = cl.GetFloat(ctx, namespace, config)
 	case "bool":
-		result, err = cl.GetBool(ctx, config)
+		result, err = cl.GetBool(ctx, namespace, config)
 	default:
 		log.Fatalf("unknown config type %s\n", cfgType)
 	}
