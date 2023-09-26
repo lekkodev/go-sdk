@@ -38,7 +38,9 @@ require (
 	github.com/go-git/go-git/v5 v5.8.0
 	github.com/pkg/errors v0.9.1
 	github.com/rjeczalik/notify v0.9.3
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.4
+	go.opentelemetry.io/otel v1.18.0
+	go.opentelemetry.io/otel/trace v1.18.0
 	golang.org/x/net v0.10.0
 	google.golang.org/protobuf v1.31.0
 	gopkg.in/yaml.v3 v3.0.1

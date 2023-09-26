@@ -16,7 +16,10 @@ package client
 
 import (
 	"context"
+	"strconv"
 
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -44,51 +47,86 @@ type CloseFunc func(context.Context) error
 // A function is returned to close the client. It is also strongly recommended
 // to call this when the program is exiting or the lekko provider is no longer needed.
 func NewClient(provider Provider) (Client, CloseFunc) {
-	return newClient(provider, nil)
+	return newClient(provider, ClientOptions{})
 }
 
 type ClientOptions struct {
 	// Arbitrary keys and values for rules evaluation that are
 	// injected into the context at startup. Context keys passed
 	// at runtime will override these values in case of conflict.
-	StartupContext map[string]interface{}
+	StartupContext    map[string]interface{}
+	EnableOTelTracing bool
 }
 
 func (o ClientOptions) NewClient(provider Provider) (Client, CloseFunc) {
-	return newClient(provider, o.StartupContext)
+	return newClient(provider, o)
 }
 
 type client struct {
-	provider       Provider
-	startupContext map[string]interface{}
+	provider          Provider
+	startupContext    map[string]interface{}
+	enableOTelTracing bool
 }
 
-func newClient(provider Provider, startupCtx map[string]interface{}) (*client, CloseFunc) {
-	return &client{provider: provider, startupContext: startupCtx}, provider.Close
+func newClient(provider Provider, options ClientOptions) (*client, CloseFunc) {
+	return &client{
+		provider:          provider,
+		startupContext:    options.StartupContext,
+		enableOTelTracing: options.EnableOTelTracing,
+	}, provider.Close
+}
+
+func (c *client) addTracingEvent(ctx context.Context, key, stringValue string) {
+	if !c.enableOTelTracing {
+		return
+	}
+	span := trace.SpanFromContext(ctx)
+	span.AddEvent(
+		"lekko_config",
+		trace.WithAttributes(
+			attribute.String("config.key", key),
+			attribute.String("config.string_value", stringValue),
+		),
+	)
 }
 
 func (c *client) GetBool(ctx context.Context, namespace, key string) (bool, error) {
-	return c.provider.GetBool(c.wrap(ctx), key, namespace)
+	res, err := c.provider.GetBool(c.wrap(ctx), key, namespace)
+	c.addTracingEvent(ctx, key, strconv.FormatBool(res))
+	return res, err
 }
 
 func (c *client) GetInt(ctx context.Context, namespace, key string) (int64, error) {
-	return c.provider.GetInt(c.wrap(ctx), key, namespace)
+	res, err := c.provider.GetInt(c.wrap(ctx), key, namespace)
+	c.addTracingEvent(ctx, key, strconv.FormatInt(res, 10))
+	return res, err
 }
 
 func (c *client) GetFloat(ctx context.Context, namespace, key string) (float64, error) {
-	return c.provider.GetFloat(c.wrap(ctx), key, namespace)
+	res, err := c.provider.GetFloat(c.wrap(ctx), key, namespace)
+	c.addTracingEvent(ctx, key, strconv.FormatFloat(res, 'E', -1, 64))
+	return res, err
 }
 
 func (c *client) GetString(ctx context.Context, namespace, key string) (string, error) {
-	return c.provider.GetString(c.wrap(ctx), key, namespace)
+	res, err := c.provider.GetString(c.wrap(ctx), key, namespace)
+	// todo: use commit/config hash it value is too big
+	c.addTracingEvent(ctx, key, res)
+	return res, err
 }
 
 func (c *client) GetProto(ctx context.Context, namespace, key string, result proto.Message) error {
-	return c.provider.GetProto(c.wrap(ctx), key, namespace, result)
+	err := c.provider.GetProto(c.wrap(ctx), key, namespace, result)
+	// todo: use commit/config hash
+	c.addTracingEvent(ctx, key, "<proto>")
+	return err
 }
 
 func (c *client) GetJSON(ctx context.Context, namespace, key string, result interface{}) error {
-	return c.provider.GetJSON(c.wrap(ctx), key, namespace, result)
+	err := c.provider.GetJSON(c.wrap(ctx), key, namespace, result)
+	// todo: use commit/config hash
+	c.addTracingEvent(ctx, key, "<json>")
+	return err
 }
 
 func (c *client) wrap(ctx context.Context) context.Context {
