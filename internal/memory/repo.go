@@ -119,6 +119,15 @@ func (r *repository) getConfigs(ns string) ([]*backendv1beta1.Feature, error) {
 	var configs []*backendv1beta1.Feature
 	for _, configName := range configNames {
 		genPath := filepath.Join(ns, "gen", "proto", fmt.Sprintf("%s.proto.bin", configName))
+		commits, err := r.Log(&git.LogOptions{FileName: &genPath, Order: git.LogOrderCommitterTime})
+		if err != nil {
+			return nil, errors.Wrapf(err, "get history for path '%s'", genPath)
+		}
+		lastCommit, err := commits.Next()
+		if err != nil {
+			return nil, errors.Wrapf(err, "get last commit for path '%s'", genPath)
+		}
+
 		fileContents, err := r.readFile(genPath)
 		if os.IsNotExist(err) {
 			continue
@@ -131,9 +140,10 @@ func (r *repository) getConfigs(ns string) ([]*backendv1beta1.Feature, error) {
 			return nil, errors.Wrapf(err, "malformed proto file at '%s'", genPath)
 		}
 		configs = append(configs, &backendv1beta1.Feature{
-			Name:    configName,
-			Sha:     plumbing.ComputeHash(plumbing.BlobObject, fileContents).String(),
-			Feature: &configProto,
+			Name:                configName,
+			Sha:                 plumbing.ComputeHash(plumbing.BlobObject, fileContents).String(),
+			Feature:             &configProto,
+			LastUpdateCommitSha: lastCommit.Hash.String(),
 		})
 	}
 	return configs, nil

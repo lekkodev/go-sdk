@@ -27,14 +27,18 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+type Metadata struct {
+	LastUpdateCommitSHA string
+}
+
 // A provider evaluates configuration from a number of sources.
 type Provider interface {
-	GetBool(ctx context.Context, key string, namespace string) (bool, error)
-	GetInt(ctx context.Context, key string, namespace string) (int64, error)
-	GetFloat(ctx context.Context, key string, namespace string) (float64, error)
-	GetString(ctx context.Context, key string, namespace string) (string, error)
-	GetProto(ctx context.Context, key string, namespace string, result proto.Message) error
-	GetJSON(ctx context.Context, key string, namespace string, result interface{}) error
+	GetBool(ctx context.Context, key string, namespace string) (bool, Metadata, error)
+	GetInt(ctx context.Context, key string, namespace string) (int64, Metadata, error)
+	GetFloat(ctx context.Context, key string, namespace string) (float64, Metadata, error)
+	GetString(ctx context.Context, key string, namespace string) (string, Metadata, error)
+	GetProto(ctx context.Context, key string, namespace string, result proto.Message) (Metadata, error)
+	GetJSON(ctx context.Context, key string, namespace string, result interface{}) (Metadata, error)
 	// Error will get called by the closure returned in Client initialization.
 	Close(ctx context.Context) error
 }

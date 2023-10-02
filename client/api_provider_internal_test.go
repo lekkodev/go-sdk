@@ -42,25 +42,29 @@ type testBackendClient struct {
 
 func (tbc *testBackendClient) GetBoolValue(ctx context.Context, req *connect.Request[v1beta1.GetBoolValueRequest]) (*connect.Response[v1beta1.GetBoolValueResponse], error) {
 	return connect.NewResponse(&v1beta1.GetBoolValueResponse{
-		Value: tbc.boolVal,
+		Value:               tbc.boolVal,
+		LastUpdateCommitSha: "commit_sha",
 	}), tbc.err
 }
 
 func (tbc *testBackendClient) GetIntValue(ctx context.Context, req *connect.Request[v1beta1.GetIntValueRequest]) (*connect.Response[v1beta1.GetIntValueResponse], error) {
 	return connect.NewResponse(&v1beta1.GetIntValueResponse{
-		Value: tbc.intVal,
+		Value:               tbc.intVal,
+		LastUpdateCommitSha: "commit_sha",
 	}), tbc.err
 }
 
 func (tbc *testBackendClient) GetFloatValue(ctx context.Context, req *connect.Request[v1beta1.GetFloatValueRequest]) (*connect.Response[v1beta1.GetFloatValueResponse], error) {
 	return connect.NewResponse(&v1beta1.GetFloatValueResponse{
-		Value: tbc.floatVal,
+		Value:               tbc.floatVal,
+		LastUpdateCommitSha: "commit_sha",
 	}), tbc.err
 }
 
 func (tbc *testBackendClient) GetStringValue(ctx context.Context, req *connect.Request[v1beta1.GetStringValueRequest]) (*connect.Response[v1beta1.GetStringValueResponse], error) {
 	return connect.NewResponse(&v1beta1.GetStringValueResponse{
-		Value: tbc.stringVal,
+		Value:               tbc.stringVal,
+		LastUpdateCommitSha: "commit_sha",
 	}), tbc.err
 }
 
@@ -71,7 +75,8 @@ func (tbc *testBackendClient) GetProtoValue(context.Context, *connect.Request[v1
 			return nil, errors.Wrap(err, "failed to marshal anyval")
 		}
 		return connect.NewResponse(&v1beta1.GetProtoValueResponse{
-			Value: anyVal,
+			Value:               anyVal,
+			LastUpdateCommitSha: "commit_sha",
 		}), tbc.err
 	}
 	if tbc.protoValV2 != nil {
@@ -84,6 +89,7 @@ func (tbc *testBackendClient) GetProtoValue(context.Context, *connect.Request[v1
 				TypeUrl: anyVal.GetTypeUrl(),
 				Value:   anyVal.GetValue(),
 			},
+			LastUpdateCommitSha: "commit_sha",
 		}), tbc.err
 	}
 	return nil, tbc.err
@@ -91,7 +97,8 @@ func (tbc *testBackendClient) GetProtoValue(context.Context, *connect.Request[v1
 
 func (tbc *testBackendClient) GetJSONValue(context.Context, *connect.Request[v1beta1.GetJSONValueRequest]) (*connect.Response[v1beta1.GetJSONValueResponse], error) {
 	return connect.NewResponse(&v1beta1.GetJSONValueResponse{
-		Value: tbc.jsonVal,
+		Value:               tbc.jsonVal,
+		LastUpdateCommitSha: "commit_sha",
 	}), tbc.err
 }
 
@@ -113,13 +120,14 @@ func TestGetBoolConfig(t *testing.T) {
 	// success
 	ctx := context.Background()
 	cli := testProvider(&testBackendClient{boolVal: true})
-	result, err := cli.GetBool(ctx, "test_key", "namespace")
+	result, meta, err := cli.GetBool(ctx, "test_key", "namespace")
 	assert.NoError(t, err)
 	assert.True(t, result)
+	assert.Equal(t, meta.LastUpdateCommitSHA, "commit_sha")
 
 	// test passing up backend error
 	cli = testProvider(&testBackendClient{err: errors.New("error")})
-	_, err = cli.GetBool(ctx, "test_key", "namespace")
+	_, _, err = cli.GetBool(ctx, "test_key", "namespace")
 	assert.Error(t, err)
 }
 
@@ -127,13 +135,14 @@ func TestGetIntConfig(t *testing.T) {
 	// success
 	ctx := context.Background()
 	cli := testProvider(&testBackendClient{intVal: 8})
-	result, err := cli.GetInt(ctx, "test_key", "namespace")
+	result, meta, err := cli.GetInt(ctx, "test_key", "namespace")
 	assert.NoError(t, err)
 	assert.Equal(t, int64(8), result)
+	assert.Equal(t, meta.LastUpdateCommitSHA, "commit_sha")
 
 	// test passing up backend error
 	cli = testProvider(&testBackendClient{err: errors.New("error")})
-	_, err = cli.GetInt(ctx, "test_key", "namespace")
+	_, _, err = cli.GetInt(ctx, "test_key", "namespace")
 	assert.Error(t, err)
 }
 
@@ -141,13 +150,14 @@ func TestGetFloatConfig(t *testing.T) {
 	// success
 	ctx := context.Background()
 	cli := testProvider(&testBackendClient{floatVal: 8.89})
-	result, err := cli.GetFloat(ctx, "test_key", "namespace")
+	result, meta, err := cli.GetFloat(ctx, "test_key", "namespace")
 	assert.NoError(t, err)
 	assert.Equal(t, 8.89, result)
+	assert.Equal(t, meta.LastUpdateCommitSHA, "commit_sha")
 
 	// test passing up backend error
 	cli = testProvider(&testBackendClient{err: errors.New("error")})
-	_, err = cli.GetFloat(ctx, "test_key", "namespace")
+	_, _, err = cli.GetFloat(ctx, "test_key", "namespace")
 	assert.Error(t, err)
 }
 
@@ -155,13 +165,14 @@ func TestGetStringConfig(t *testing.T) {
 	// success
 	ctx := context.Background()
 	cli := testProvider(&testBackendClient{stringVal: "foo"})
-	result, err := cli.GetString(ctx, "test_key", "namespace")
+	result, meta, err := cli.GetString(ctx, "test_key", "namespace")
 	assert.NoError(t, err)
 	assert.Equal(t, "foo", result)
+	assert.Equal(t, meta.LastUpdateCommitSHA, "commit_sha")
 
 	// test passing up backend error
 	cli = testProvider(&testBackendClient{err: errors.New("error")})
-	_, err = cli.GetString(ctx, "test_key", "namespace")
+	_, _, err = cli.GetString(ctx, "test_key", "namespace")
 	assert.Error(t, err)
 }
 
@@ -180,17 +191,21 @@ func TestGetProtoConfig(t *testing.T) {
 			ctx := context.Background()
 			cli := protoProvider(version, wrapperspb.Int64(59), nil)
 			result := &wrapperspb.Int64Value{}
-			require.NoError(t, cli.GetProto(ctx, "test_key", "namespace", result))
+			meta, err := cli.GetProto(ctx, "test_key", "namespace", result)
+			require.NoError(t, err)
 			assert.EqualValues(t, int64(59), result.Value)
+			assert.Equal(t, meta.LastUpdateCommitSHA, "commit_sha")
 
 			// test passing up backend error
 			cli = protoProvider(version, wrapperspb.Int64(59), errors.New("error"))
-			assert.Error(t, cli.GetProto(ctx, "test_key", "namespace", result))
+			_, err = cli.GetProto(ctx, "test_key", "namespace", result)
+			assert.Error(t, err)
 
 			// type mismatch in proto value
 			cli = protoProvider(version, wrapperspb.Int64(59), nil)
 			badResult := &wrapperspb.BoolValue{Value: true}
-			assert.Error(t, cli.GetProto(ctx, "test_key", "namespace", badResult))
+			_, err = cli.GetProto(ctx, "test_key", "namespace", badResult)
+			assert.Error(t, err)
 			// Note: the value of badResult is now undefined and api
 			// behavior may change, so it should not be depended on
 		})
@@ -200,7 +215,7 @@ func TestGetProtoConfig(t *testing.T) {
 func TestUnsupportedContextType(t *testing.T) {
 	ctx := Add(context.Background(), "foo", []string{})
 	cli := testProvider(&testBackendClient{boolVal: true})
-	_, err := cli.GetBool(ctx, "test_key", "namespace")
+	_, _, err := cli.GetBool(ctx, "test_key", "namespace")
 	require.Error(t, err)
 }
 
@@ -221,17 +236,21 @@ func TestGetJSONConfig(t *testing.T) {
 	require.NoError(t, err)
 	cli := testProvider(&testBackendClient{jsonVal: bytes})
 	result := &testStruct{}
-	require.NoError(t, cli.GetJSON(ctx, "test_key", "namespace", result))
+	meta, err := cli.GetJSON(ctx, "test_key", "namespace", result)
+	require.NoError(t, err)
 	assert.EqualValues(t, ts, result)
+	assert.Equal(t, meta.LastUpdateCommitSHA, "commit_sha")
 
 	// test passing up backend error
 	cli = testProvider(&testBackendClient{jsonVal: bytes, err: errors.New("error")})
-	assert.Error(t, cli.GetJSON(ctx, "test_key", "namespace", result))
+	_, err = cli.GetJSON(ctx, "test_key", "namespace", result)
+	assert.Error(t, err)
 
 	// type mismatch in result
 	cli = testProvider(&testBackendClient{jsonVal: bytes})
 	badResult := new(int)
-	assert.Error(t, cli.GetJSON(ctx, "test_key", "namespace", badResult))
+	_, err = cli.GetJSON(ctx, "test_key", "namespace", badResult)
+	assert.Error(t, err)
 }
 
 func TestGetJSONConfigArr(t *testing.T) {
@@ -241,8 +260,10 @@ func TestGetJSONConfigArr(t *testing.T) {
 	require.NoError(t, err)
 	cli := testProvider(&testBackendClient{jsonVal: bytes})
 	result := []int{45}
-	require.NoError(t, cli.GetJSON(ctx, "test_key", "namespace", &result))
+	meta, err := cli.GetJSON(ctx, "test_key", "namespace", &result)
+	require.NoError(t, err)
 	assert.EqualValues(t, ts, result)
+	assert.Equal(t, meta.LastUpdateCommitSHA, "commit_sha")
 }
 
 func TestGetJSONConfigError(t *testing.T) {
@@ -252,7 +273,7 @@ func TestGetJSONConfigError(t *testing.T) {
 	require.NoError(t, err)
 	cli := testProvider(&testBackendClient{jsonVal: bytes})
 	result := []string{"foo"}
-	err = cli.GetJSON(ctx, "test_key", "namespace", &result)
+	_, err = cli.GetJSON(ctx, "test_key", "namespace", &result)
 	assert.Error(t, err)
 	// Note: the value of &result is now undefined and api
 	// behavior may change, so it should not be depended on

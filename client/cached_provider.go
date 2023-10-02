@@ -110,53 +110,62 @@ func (cp *cachedProvider) Close(ctx context.Context) error {
 	return cp.store.Close(ctx)
 }
 
-func (cp *cachedProvider) GetBool(ctx context.Context, key string, namespace string) (bool, error) {
+func (cp *cachedProvider) GetBool(ctx context.Context, key string, namespace string) (bool, Metadata, error) {
 	dest := &wrapperspb.BoolValue{}
-	if err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest); err != nil {
-		return false, err
+	cfg, err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest)
+	if err != nil {
+		return false, Metadata{}, err
 	}
-	return dest.GetValue(), nil
+	return dest.GetValue(), Metadata{LastUpdateCommitSHA: cfg.LastUpdateCommitSHA}, nil
 }
 
-func (cp *cachedProvider) GetFloat(ctx context.Context, key string, namespace string) (float64, error) {
+func (cp *cachedProvider) GetFloat(ctx context.Context, key string, namespace string) (float64, Metadata, error) {
 	dest := &wrapperspb.DoubleValue{}
-	if err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest); err != nil {
-		return 0, err
+	cfg, err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest)
+	if err != nil {
+		return 0, Metadata{}, err
 	}
-	return dest.GetValue(), nil
+	return dest.GetValue(), Metadata{LastUpdateCommitSHA: cfg.LastUpdateCommitSHA}, nil
 }
 
-func (cp *cachedProvider) GetInt(ctx context.Context, key string, namespace string) (int64, error) {
+func (cp *cachedProvider) GetInt(ctx context.Context, key string, namespace string) (int64, Metadata, error) {
 	dest := &wrapperspb.Int64Value{}
-	if err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest); err != nil {
-		return 0, err
+	cfg, err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest)
+	if err != nil {
+		return 0, Metadata{}, err
 	}
-	return dest.GetValue(), nil
+	return dest.GetValue(), Metadata{LastUpdateCommitSHA: cfg.LastUpdateCommitSHA}, nil
 }
 
-func (cp *cachedProvider) GetJSON(ctx context.Context, key string, namespace string, result interface{}) error {
+func (cp *cachedProvider) GetJSON(ctx context.Context, key string, namespace string, result interface{}) (Metadata, error) {
 	dest := &structpb.Value{}
-	if err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest); err != nil {
-		return err
+	cfg, err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest)
+	if err != nil {
+		return Metadata{}, err
 	}
 	bytes, err := dest.MarshalJSON()
 	if err != nil {
-		return err
+		return Metadata{}, err
 	}
 	if err := json.Unmarshal(bytes, result); err != nil {
-		return errors.Wrapf(err, "failed to unmarshal json into go type %T", result)
+		return Metadata{}, errors.Wrapf(err, "failed to unmarshal json into go type %T", result)
 	}
-	return nil
+	return Metadata{LastUpdateCommitSHA: cfg.LastUpdateCommitSHA}, nil
 }
 
-func (cp *cachedProvider) GetProto(ctx context.Context, key string, namespace string, result protoreflect.ProtoMessage) error {
-	return cp.store.Evaluate(key, namespace, fromContext(ctx), result)
+func (cp *cachedProvider) GetProto(ctx context.Context, key string, namespace string, result protoreflect.ProtoMessage) (Metadata, error) {
+	cfg, err := cp.store.Evaluate(key, namespace, fromContext(ctx), result)
+	if err != nil {
+		return Metadata{}, err
+	}
+	return Metadata{LastUpdateCommitSHA: cfg.LastUpdateCommitSHA}, nil
 }
 
-func (cp *cachedProvider) GetString(ctx context.Context, key string, namespace string) (string, error) {
+func (cp *cachedProvider) GetString(ctx context.Context, key string, namespace string) (string, Metadata, error) {
 	dest := &wrapperspb.StringValue{}
-	if err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest); err != nil {
-		return "", err
+	cfg, err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest)
+	if err != nil {
+		return "", Metadata{}, err
 	}
-	return dest.GetValue(), nil
+	return dest.GetValue(), Metadata{LastUpdateCommitSHA: cfg.LastUpdateCommitSHA}, nil
 }

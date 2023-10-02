@@ -40,7 +40,7 @@ const (
 )
 
 type Store interface {
-	Evaluate(key string, namespace string, lekkoContext map[string]interface{}, dest proto.Message) error
+	Evaluate(key string, namespace string, lekkoContext map[string]interface{}, dest proto.Message) (*StoredConfig, error)
 	Close(ctx context.Context) error
 }
 
@@ -133,10 +133,10 @@ func (b *backendStore) Close(ctx context.Context) error {
 }
 
 // Evaluate implements Store.
-func (b *backendStore) Evaluate(key string, namespace string, lc map[string]interface{}, dest protoreflect.ProtoMessage) error {
+func (b *backendStore) Evaluate(key string, namespace string, lc map[string]interface{}, dest protoreflect.ProtoMessage) (*StoredConfig, error) {
 	cfg, rp, err := b.store.evaluateType(key, namespace, lc, dest)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// track metrics
 	b.eb.track(&backendv1beta1.FlagEvaluationEvent{
@@ -148,7 +148,7 @@ func (b *backendStore) Evaluate(key string, namespace string, lc map[string]inte
 		ContextKeys:   toContextKeysProto(lc),
 		ResultPath:    toResultPathProto(rp),
 	})
-	return nil
+	return cfg, nil
 }
 
 func (b *backendStore) registerWithBackoff(ctx context.Context) (string, error) {
