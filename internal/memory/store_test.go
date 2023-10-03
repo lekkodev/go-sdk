@@ -15,33 +15,13 @@
 package memory
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
 	"github.com/lekkodev/go-sdk/testdata"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/anypb"
 )
-
-type TestStore struct {
-	configs  map[string]*anypb.Any
-	closeErr error
-}
-
-func (ts *TestStore) Evaluate(key string, namespace string, lc map[string]interface{}, dest proto.Message) (*StoredConfig, error) {
-	a, ok := ts.configs[key]
-	if !ok {
-		return nil, errors.Errorf("key %s not found", key)
-	}
-	return &StoredConfig{}, a.UnmarshalTo(dest)
-}
-
-func (ts *TestStore) Close(ctx context.Context) error {
-	return ts.closeErr
-}
 
 func TestHashUpdateRequest(t *testing.T) {
 	req := &updateRequest{

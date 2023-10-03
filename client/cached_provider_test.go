@@ -16,7 +16,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	featurev1beta1 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/feature/v1beta1"
@@ -58,29 +57,29 @@ func TestInMemoryProviderSuccess(t *testing.T) {
 	br, meta, err := im.GetBool(ctx, "bool", "")
 	require.NoError(t, err)
 	assert.True(t, br)
-	assert.Equal(t, meta.LastUpdateCommitSHA, fakeSHA("bool", ""))
+	assert.Equal(t, meta.LastUpdateCommitSHA, testdata.FakeLastUpdateCommitSHA("bool"))
 	sr, meta, err := im.GetString(ctx, "string", "")
 	require.NoError(t, err)
 	assert.Equal(t, "foo", sr)
-	assert.Equal(t, meta.LastUpdateCommitSHA, fakeSHA("string", ""))
+	assert.Equal(t, meta.LastUpdateCommitSHA, testdata.FakeLastUpdateCommitSHA("string"))
 	ir, meta, err := im.GetInt(ctx, "int", "")
 	require.NoError(t, err)
 	assert.Equal(t, int64(42), ir)
-	assert.Equal(t, meta.LastUpdateCommitSHA, fakeSHA("int", ""))
+	assert.Equal(t, meta.LastUpdateCommitSHA, testdata.FakeLastUpdateCommitSHA("int"))
 	fr, meta, err := im.GetFloat(ctx, "float", "")
 	require.NoError(t, err)
 	assert.Equal(t, float64(1.2), fr)
-	assert.Equal(t, meta.LastUpdateCommitSHA, fakeSHA("float", ""))
+	assert.Equal(t, meta.LastUpdateCommitSHA, testdata.FakeLastUpdateCommitSHA("float"))
 	var result []any
 	meta, err = im.GetJSON(ctx, "json", "", &result)
 	require.NoError(t, err)
 	assert.EqualValues(t, []any{1.0, 2.0}, result)
-	assert.Equal(t, meta.LastUpdateCommitSHA, fakeSHA("json", ""))
+	assert.Equal(t, meta.LastUpdateCommitSHA, testdata.FakeLastUpdateCommitSHA("json"))
 	protoResult := &wrapperspb.Int32Value{}
 	meta, err = im.GetProto(ctx, "proto", "", protoResult)
 	require.NoError(t, err)
 	assert.EqualValues(t, int32(58), protoResult.Value)
-	assert.Equal(t, meta.LastUpdateCommitSHA, fakeSHA("proto", ""))
+	assert.Equal(t, meta.LastUpdateCommitSHA, testdata.FakeLastUpdateCommitSHA("proto"))
 	require.NoError(t, im.Close(ctx), "no error during close")
 }
 
@@ -139,11 +138,7 @@ func (ts testStore) Evaluate(key string, namespace string, lc map[string]interfa
 	if !ok {
 		return nil, errors.Errorf("key %s not found", key)
 	}
-	return &memory.StoredConfig{LastUpdateCommitSHA: fakeSHA(key, namespace)}, a.UnmarshalTo(dest)
-}
-
-func fakeSHA(key, namespace string) string {
-	return fmt.Sprintf("sha of %s/%s", namespace, key)
+	return &memory.StoredConfig{LastUpdateCommitSHA: testdata.FakeLastUpdateCommitSHA(key)}, a.UnmarshalTo(dest)
 }
 
 func (ts testStore) Close(ctx context.Context) error {
