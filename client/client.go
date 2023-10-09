@@ -16,10 +16,7 @@ package client
 
 import (
 	"context"
-	"strconv"
 
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -76,61 +73,32 @@ func newClient(provider Provider, options ClientOptions) (*client, CloseFunc) {
 	}, provider.Close
 }
 
-func (c *client) addTracingEvent(ctx context.Context, key, stringValue, version string) {
-	if !c.enableOTelTracing {
-		return
-	}
-	span := trace.SpanFromContext(ctx)
-	attributes := []attribute.KeyValue{
-		attribute.String("config.key", key),
-	}
-	if len(stringValue) > 0 {
-		attributes = append(attributes, attribute.String("config.string_value", stringValue))
-	}
-	if len(version) > 0 {
-		attributes = append(attributes, attribute.String("config.version", version))
-	}
-
-	span.AddEvent(
-		"lekko_config",
-		trace.WithAttributes(attributes...),
-	)
-}
-
 func (c *client) GetBool(ctx context.Context, namespace, key string) (bool, error) {
-	res, meta, err := c.provider.GetBool(c.wrap(ctx), key, namespace)
-	c.addTracingEvent(ctx, key, strconv.FormatBool(res), meta.LastUpdateCommitSHA)
+	res, err := c.provider.GetBool(c.wrap(ctx), key, namespace)
 	return res, err
 }
 
 func (c *client) GetInt(ctx context.Context, namespace, key string) (int64, error) {
-	res, meta, err := c.provider.GetInt(c.wrap(ctx), key, namespace)
-	c.addTracingEvent(ctx, key, strconv.FormatInt(res, 10), meta.LastUpdateCommitSHA)
+	res, err := c.provider.GetInt(c.wrap(ctx), key, namespace)
 	return res, err
 }
 
 func (c *client) GetFloat(ctx context.Context, namespace, key string) (float64, error) {
-	res, meta, err := c.provider.GetFloat(c.wrap(ctx), key, namespace)
-	c.addTracingEvent(ctx, key, strconv.FormatFloat(res, 'E', -1, 64), meta.LastUpdateCommitSHA)
+	res, err := c.provider.GetFloat(c.wrap(ctx), key, namespace)
 	return res, err
 }
 
 func (c *client) GetString(ctx context.Context, namespace, key string) (string, error) {
-	res, meta, err := c.provider.GetString(c.wrap(ctx), key, namespace)
-	c.addTracingEvent(ctx, key, "", meta.LastUpdateCommitSHA)
+	res, err := c.provider.GetString(c.wrap(ctx), key, namespace)
 	return res, err
 }
 
 func (c *client) GetProto(ctx context.Context, namespace, key string, result proto.Message) error {
-	meta, err := c.provider.GetProto(c.wrap(ctx), key, namespace, result)
-	c.addTracingEvent(ctx, key, "", meta.LastUpdateCommitSHA)
-	return err
+	return c.provider.GetProto(c.wrap(ctx), key, namespace, result)
 }
 
 func (c *client) GetJSON(ctx context.Context, namespace, key string, result interface{}) error {
-	meta, err := c.provider.GetJSON(c.wrap(ctx), key, namespace, result)
-	c.addTracingEvent(ctx, key, "", meta.LastUpdateCommitSHA)
-	return err
+	return c.provider.GetJSON(c.wrap(ctx), key, namespace, result)
 }
 
 func (c *client) wrap(ctx context.Context) context.Context {

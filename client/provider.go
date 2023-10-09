@@ -23,6 +23,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/net/http2"
 	"google.golang.org/protobuf/proto"
 )
@@ -33,12 +35,12 @@ type Metadata struct {
 
 // A provider evaluates configuration from a number of sources.
 type Provider interface {
-	GetBool(ctx context.Context, key string, namespace string) (bool, Metadata, error)
-	GetInt(ctx context.Context, key string, namespace string) (int64, Metadata, error)
-	GetFloat(ctx context.Context, key string, namespace string) (float64, Metadata, error)
-	GetString(ctx context.Context, key string, namespace string) (string, Metadata, error)
-	GetProto(ctx context.Context, key string, namespace string, result proto.Message) (Metadata, error)
-	GetJSON(ctx context.Context, key string, namespace string, result interface{}) (Metadata, error)
+	GetBool(ctx context.Context, key string, namespace string) (bool, error)
+	GetInt(ctx context.Context, key string, namespace string) (int64, error)
+	GetFloat(ctx context.Context, key string, namespace string) (float64, error)
+	GetString(ctx context.Context, key string, namespace string) (string, error)
+	GetProto(ctx context.Context, key string, namespace string, result proto.Message) error
+	GetJSON(ctx context.Context, key string, namespace string, result interface{}) error
 	// Error will get called by the closure returned in Client initialization.
 	Close(ctx context.Context) error
 }
@@ -113,6 +115,7 @@ type providerConfig struct {
 	updateInterval time.Duration
 	serverPort     int32
 	allowHTTP      bool
+	otelTracing    bool
 }
 
 func (cfg *providerConfig) validate(ctx context.Context) error {
@@ -176,4 +179,37 @@ func withRepositoryKey(repoKey *RepositoryKey) ProviderOption {
 
 func (o *repositoryKeyOption) apply(cfg *providerConfig) {
 	cfg.repoKey = o.repoKey
+}
+
+type otelTracingOption struct{}
+
+func WithOtelTracing() ProviderOption {
+	return &otelTracingOption{}
+}
+
+func (o *otelTracingOption) apply(cfg *providerConfig) {
+	cfg.otelTracing = true
+}
+
+type otelTracing struct{}
+
+func (o *otelTracing) addTracingEvent(ctx context.Context, key, stringValue, version string) {
+	if o == nil {
+		return
+	}
+	span := trace.SpanFromContext(ctx)
+	attributes := []attribute.KeyValue{
+		attribute.String("config.key", key),
+	}
+	if len(stringValue) > 0 {
+		attributes = append(attributes, attribute.String("config.string_value", stringValue))
+	}
+	if len(version) > 0 {
+		attributes = append(attributes, attribute.String("config.version", version))
+	}
+
+	span.AddEvent(
+		"lekko_config",
+		trace.WithAttributes(attributes...),
+	)
 }

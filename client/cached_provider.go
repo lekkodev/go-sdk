@@ -17,6 +17,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"time"
 
 	"github.com/lekkodev/go-sdk/internal/memory"
@@ -60,9 +61,13 @@ func CachedAPIProvider(
 	if err != nil {
 		return nil, err
 	}
-	return &cachedProvider{
+	provider := &cachedProvider{
 		store: backend,
-	}, nil
+	}
+	if cfg.otelTracing {
+		provider.otel = &otelTracing{}
+	}
+	return provider, nil
 }
 
 // Reads configuration from a git repository on-disk. This provider will remain up to date with
@@ -97,75 +102,86 @@ func CachedGitFsProvider(
 	if err != nil {
 		return nil, err
 	}
-	return &cachedProvider{
+	provider := &cachedProvider{
 		store: gitStore,
-	}, nil
+	}
+	if cfg.otelTracing {
+		provider.otel = &otelTracing{}
+	}
+	return provider, nil
 }
 
 type cachedProvider struct {
 	store memory.Store
+	otel  *otelTracing
 }
 
 func (cp *cachedProvider) Close(ctx context.Context) error {
 	return cp.store.Close(ctx)
 }
 
-func (cp *cachedProvider) GetBool(ctx context.Context, key string, namespace string) (bool, Metadata, error) {
+func (cp *cachedProvider) GetBool(ctx context.Context, key string, namespace string) (bool, error) {
 	dest := &wrapperspb.BoolValue{}
 	cfg, err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest)
 	if err != nil {
-		return false, Metadata{}, err
+		return false, err
 	}
-	return dest.GetValue(), Metadata{LastUpdateCommitSHA: cfg.LastUpdateCommitSHA}, nil
+	cp.otel.addTracingEvent(ctx, key, strconv.FormatBool(dest.GetValue()), cfg.LastUpdateCommitSHA)
+	return dest.GetValue(), nil
 }
 
-func (cp *cachedProvider) GetFloat(ctx context.Context, key string, namespace string) (float64, Metadata, error) {
+func (cp *cachedProvider) GetFloat(ctx context.Context, key string, namespace string) (float64, error) {
 	dest := &wrapperspb.DoubleValue{}
 	cfg, err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest)
 	if err != nil {
-		return 0, Metadata{}, err
+		return 0, err
 	}
-	return dest.GetValue(), Metadata{LastUpdateCommitSHA: cfg.LastUpdateCommitSHA}, nil
+	cp.otel.addTracingEvent(ctx, key, strconv.FormatFloat(dest.GetValue(), 'G', -1, 64), cfg.LastUpdateCommitSHA)
+	return dest.GetValue(), nil
 }
 
-func (cp *cachedProvider) GetInt(ctx context.Context, key string, namespace string) (int64, Metadata, error) {
+func (cp *cachedProvider) GetInt(ctx context.Context, key string, namespace string) (int64, error) {
 	dest := &wrapperspb.Int64Value{}
 	cfg, err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest)
 	if err != nil {
-		return 0, Metadata{}, err
+		return 0, err
 	}
-	return dest.GetValue(), Metadata{LastUpdateCommitSHA: cfg.LastUpdateCommitSHA}, nil
+	cp.otel.addTracingEvent(ctx, key, strconv.FormatInt(dest.GetValue(), 10), cfg.LastUpdateCommitSHA)
+	return dest.GetValue(), nil
 }
 
-func (cp *cachedProvider) GetJSON(ctx context.Context, key string, namespace string, result interface{}) (Metadata, error) {
+func (cp *cachedProvider) GetJSON(ctx context.Context, key string, namespace string, result interface{}) error {
 	dest := &structpb.Value{}
 	cfg, err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest)
 	if err != nil {
-		return Metadata{}, err
+		return err
 	}
 	bytes, err := dest.MarshalJSON()
 	if err != nil {
-		return Metadata{}, err
+		return err
 	}
 	if err := json.Unmarshal(bytes, result); err != nil {
-		return Metadata{}, errors.Wrapf(err, "failed to unmarshal json into go type %T", result)
+		return errors.Wrapf(err, "failed to unmarshal json into go type %T", result)
 	}
-	return Metadata{LastUpdateCommitSHA: cfg.LastUpdateCommitSHA}, nil
+	cp.otel.addTracingEvent(ctx, key, "", cfg.LastUpdateCommitSHA)
+	return nil
 }
 
-func (cp *cachedProvider) GetProto(ctx context.Context, key string, namespace string, result protoreflect.ProtoMessage) (Metadata, error) {
+func (cp *cachedProvider) GetProto(ctx context.Context, key string, namespace string, result protoreflect.ProtoMessage) error {
 	cfg, err := cp.store.Evaluate(key, namespace, fromContext(ctx), result)
 	if err != nil {
-		return Metadata{}, err
+		return err
 	}
-	return Metadata{LastUpdateCommitSHA: cfg.LastUpdateCommitSHA}, nil
+	cp.otel.addTracingEvent(ctx, key, "", cfg.LastUpdateCommitSHA)
+	return nil
 }
 
-func (cp *cachedProvider) GetString(ctx context.Context, key string, namespace string) (string, Metadata, error) {
+func (cp *cachedProvider) GetString(ctx context.Context, key string, namespace string) (string, error) {
 	dest := &wrapperspb.StringValue{}
 	cfg, err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest)
 	if err != nil {
-		return "", Metadata{}, err
+		return "", err
 	}
-	return dest.GetValue(), Metadata{LastUpdateCommitSHA: cfg.LastUpdateCommitSHA}, nil
+	cp.otel.addTracingEvent(ctx, key, "", cfg.LastUpdateCommitSHA)
+	return dest.GetValue(), nil
 }

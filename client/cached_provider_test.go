@@ -20,10 +20,12 @@ import (
 
 	featurev1beta1 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/feature/v1beta1"
 	"github.com/lekkodev/go-sdk/internal/memory"
+	"github.com/lekkodev/go-sdk/internal/oteltest"
 	"github.com/lekkodev/go-sdk/testdata"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/attribute"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -51,35 +53,81 @@ func TestInMemoryProviderSuccess(t *testing.T) {
 		store: &testStore{
 			configs: makeConfigs(),
 		},
+		otel: &otelTracing{},
 	}
-	ctx := context.Background()
+
 	// happy paths
-	br, meta, err := im.GetBool(ctx, "bool", "")
+
+	ctx, otelHelper := oteltest.InitOtelAndStartSpan()
+	br, err := im.GetBool(ctx, "bool", "")
 	require.NoError(t, err)
 	assert.True(t, br)
-	assert.Equal(t, meta.LastUpdateCommitSHA, testdata.FakeLastUpdateCommitSHA("bool"))
-	sr, meta, err := im.GetString(ctx, "string", "")
+	event := otelHelper.EndSpanAndGetConfigEvent(t)
+	expected := []attribute.KeyValue{
+		attribute.String("config.key", "bool"),
+		attribute.String("config.string_value", "true"),
+		attribute.String("config.version", testdata.FakeLastUpdateCommitSHA("bool")),
+	}
+	assert.ElementsMatch(t, expected, event.Attributes)
+
+	ctx, otelHelper = oteltest.InitOtelAndStartSpan()
+	sr, err := im.GetString(ctx, "string", "")
 	require.NoError(t, err)
 	assert.Equal(t, "foo", sr)
-	assert.Equal(t, meta.LastUpdateCommitSHA, testdata.FakeLastUpdateCommitSHA("string"))
-	ir, meta, err := im.GetInt(ctx, "int", "")
+	event = otelHelper.EndSpanAndGetConfigEvent(t)
+	expected = []attribute.KeyValue{
+		attribute.String("config.key", "string"),
+		attribute.String("config.version", testdata.FakeLastUpdateCommitSHA("string")),
+	}
+	assert.ElementsMatch(t, expected, event.Attributes)
+
+	ctx, otelHelper = oteltest.InitOtelAndStartSpan()
+	ir, err := im.GetInt(ctx, "int", "")
 	require.NoError(t, err)
 	assert.Equal(t, int64(42), ir)
-	assert.Equal(t, meta.LastUpdateCommitSHA, testdata.FakeLastUpdateCommitSHA("int"))
-	fr, meta, err := im.GetFloat(ctx, "float", "")
+	event = otelHelper.EndSpanAndGetConfigEvent(t)
+	expected = []attribute.KeyValue{
+		attribute.String("config.key", "int"),
+		attribute.String("config.string_value", "42"),
+		attribute.String("config.version", testdata.FakeLastUpdateCommitSHA("int")),
+	}
+	assert.ElementsMatch(t, expected, event.Attributes)
+
+	ctx, otelHelper = oteltest.InitOtelAndStartSpan()
+	fr, err := im.GetFloat(ctx, "float", "")
 	require.NoError(t, err)
 	assert.Equal(t, float64(1.2), fr)
-	assert.Equal(t, meta.LastUpdateCommitSHA, testdata.FakeLastUpdateCommitSHA("float"))
+	event = otelHelper.EndSpanAndGetConfigEvent(t)
+	expected = []attribute.KeyValue{
+		attribute.String("config.key", "float"),
+		attribute.String("config.string_value", "1.2"),
+		attribute.String("config.version", testdata.FakeLastUpdateCommitSHA("float")),
+	}
+	assert.ElementsMatch(t, expected, event.Attributes)
+
+	ctx, otelHelper = oteltest.InitOtelAndStartSpan()
 	var result []any
-	meta, err = im.GetJSON(ctx, "json", "", &result)
-	require.NoError(t, err)
+	require.NoError(t, im.GetJSON(ctx, "json", "", &result))
 	assert.EqualValues(t, []any{1.0, 2.0}, result)
-	assert.Equal(t, meta.LastUpdateCommitSHA, testdata.FakeLastUpdateCommitSHA("json"))
+	event = otelHelper.EndSpanAndGetConfigEvent(t)
+	expected = []attribute.KeyValue{
+		attribute.String("config.key", "json"),
+		attribute.String("config.version", testdata.FakeLastUpdateCommitSHA("json")),
+	}
+	assert.ElementsMatch(t, expected, event.Attributes)
+
+	ctx, otelHelper = oteltest.InitOtelAndStartSpan()
 	protoResult := &wrapperspb.Int32Value{}
-	meta, err = im.GetProto(ctx, "proto", "", protoResult)
-	require.NoError(t, err)
+	require.NoError(t, im.GetProto(ctx, "proto", "", protoResult))
 	assert.EqualValues(t, int32(58), protoResult.Value)
-	assert.Equal(t, meta.LastUpdateCommitSHA, testdata.FakeLastUpdateCommitSHA("proto"))
+	assert.ElementsMatch(t,
+		[]attribute.KeyValue{
+			attribute.String("config.key", "proto"),
+			attribute.String("config.version", testdata.FakeLastUpdateCommitSHA("proto")),
+		},
+		otelHelper.EndSpanAndGetConfigEvent(t).Attributes,
+	)
+
 	require.NoError(t, im.Close(ctx), "no error during close")
 }
 
@@ -90,18 +138,16 @@ func TestInMemoryProviderTypeMismatch(t *testing.T) {
 		},
 	}
 	ctx := context.Background()
-	_, _, err := im.GetString(ctx, "bool", "")
+	_, err := im.GetString(ctx, "bool", "")
 	require.Error(t, err)
-	_, _, err = im.GetInt(ctx, "bool", "")
+	_, err = im.GetInt(ctx, "bool", "")
 	require.Error(t, err)
-	_, _, err = im.GetFloat(ctx, "bool", "")
+	_, err = im.GetFloat(ctx, "bool", "")
 	require.Error(t, err)
 	var result bool
-	_, err = im.GetJSON(ctx, "bool", "", &result)
-	require.Error(t, err)
+	require.Error(t, im.GetJSON(ctx, "bool", "", &result))
 	protoResult := &wrapperspb.FloatValue{}
-	_, err = im.GetProto(ctx, "bool", "", protoResult)
-	require.Error(t, err)
+	require.Error(t, im.GetProto(ctx, "bool", "", protoResult))
 	require.NoError(t, im.Close(ctx), "no error during close")
 }
 
@@ -112,7 +158,7 @@ func TestInMemoryProviderMissingConfig(t *testing.T) {
 		},
 	}
 	ctx := context.Background()
-	_, _, err := im.GetBool(ctx, "missing", "")
+	_, err := im.GetBool(ctx, "missing", "")
 	require.Error(t, err)
 	require.NoError(t, im.Close(ctx), "no error during close")
 }

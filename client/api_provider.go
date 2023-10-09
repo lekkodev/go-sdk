@@ -17,6 +17,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"time"
 
 	clientv1beta1connect "buf.build/gen/go/lekkodev/sdk/bufbuild/connect-go/lekko/client/v1beta1/clientv1beta1connect"
@@ -56,6 +57,9 @@ func ConnectAPIProvider(ctx context.Context, apiKey string, rk *RepositoryKey, o
 		lekkoClient: clientv1beta1connect.NewConfigurationServiceClient(cfg.getHTTPClient(), cfg.url),
 		rk:          cfg.repoKey,
 	}
+	if cfg.otelTracing {
+		provider.otel = &otelTracing{}
+	}
 	if err := provider.register(ctx); err != nil {
 		return nil, err
 	}
@@ -91,6 +95,9 @@ func ConnectSidecarProvider(ctx context.Context, url string, rk *RepositoryKey, 
 		),
 		rk: cfg.repoKey,
 	}
+	if cfg.otelTracing {
+		provider.otel = &otelTracing{}
+	}
 	if err := provider.registerWithBackoff(ctx); err != nil {
 		return nil, err
 	}
@@ -120,6 +127,7 @@ type apiProvider struct {
 	apikey      string
 	lekkoClient clientv1beta1connect.ConfigurationServiceClient
 	rk          *RepositoryKey
+	otel        *otelTracing
 }
 
 // This performs an exponential backoff until the context is cancelled.
@@ -170,10 +178,10 @@ func (a *apiProvider) Close(ctx context.Context) error {
 	return err
 }
 
-func (a *apiProvider) GetBool(ctx context.Context, key string, namespace string) (bool, Metadata, error) {
+func (a *apiProvider) GetBool(ctx context.Context, key string, namespace string) (bool, error) {
 	lc, err := toProto(fromContext(ctx))
 	if err != nil {
-		return false, Metadata{}, errors.Wrap(err, "error transforming context")
+		return false, errors.Wrap(err, "error transforming context")
 	}
 	req := connect.NewRequest(&clientv1beta1.GetBoolValueRequest{
 		Key:       key,
@@ -184,15 +192,16 @@ func (a *apiProvider) GetBool(ctx context.Context, key string, namespace string)
 	req.Header().Set(lekkoAPIKeyHeader, a.apikey)
 	resp, err := a.lekkoClient.GetBoolValue(ctx, req)
 	if err != nil {
-		return false, Metadata{}, errors.Wrap(err, "error hitting lekko backend")
+		return false, errors.Wrap(err, "error hitting lekko backend")
 	}
-	return resp.Msg.GetValue(), Metadata{LastUpdateCommitSHA: resp.Msg.GetLastUpdateCommitSha()}, nil
+	a.otel.addTracingEvent(ctx, key, strconv.FormatBool(resp.Msg.GetValue()), resp.Msg.GetLastUpdateCommitSha())
+	return resp.Msg.GetValue(), nil
 }
 
-func (a *apiProvider) GetInt(ctx context.Context, key string, namespace string) (int64, Metadata, error) {
+func (a *apiProvider) GetInt(ctx context.Context, key string, namespace string) (int64, error) {
 	lc, err := toProto(fromContext(ctx))
 	if err != nil {
-		return 0, Metadata{}, errors.Wrap(err, "error transforming context")
+		return 0, errors.Wrap(err, "error transforming context")
 	}
 	req := connect.NewRequest(&clientv1beta1.GetIntValueRequest{
 		Key:       key,
@@ -203,15 +212,16 @@ func (a *apiProvider) GetInt(ctx context.Context, key string, namespace string) 
 	req.Header().Set(lekkoAPIKeyHeader, a.apikey)
 	resp, err := a.lekkoClient.GetIntValue(ctx, req)
 	if err != nil {
-		return 0, Metadata{}, errors.Wrap(err, "error hitting lekko backend")
+		return 0, errors.Wrap(err, "error hitting lekko backend")
 	}
-	return resp.Msg.GetValue(), Metadata{LastUpdateCommitSHA: resp.Msg.GetLastUpdateCommitSha()}, nil
+	a.otel.addTracingEvent(ctx, key, strconv.FormatInt(resp.Msg.GetValue(), 10), resp.Msg.GetLastUpdateCommitSha())
+	return resp.Msg.GetValue(), nil
 }
 
-func (a *apiProvider) GetFloat(ctx context.Context, key string, namespace string) (float64, Metadata, error) {
+func (a *apiProvider) GetFloat(ctx context.Context, key string, namespace string) (float64, error) {
 	lc, err := toProto(fromContext(ctx))
 	if err != nil {
-		return 0, Metadata{}, errors.Wrap(err, "error transforming context")
+		return 0, errors.Wrap(err, "error transforming context")
 	}
 	req := connect.NewRequest(&clientv1beta1.GetFloatValueRequest{
 		Key:       key,
@@ -222,15 +232,16 @@ func (a *apiProvider) GetFloat(ctx context.Context, key string, namespace string
 	req.Header().Set(lekkoAPIKeyHeader, a.apikey)
 	resp, err := a.lekkoClient.GetFloatValue(ctx, req)
 	if err != nil {
-		return 0, Metadata{}, errors.Wrap(err, "error hitting lekko backend")
+		return 0, errors.Wrap(err, "error hitting lekko backend")
 	}
-	return resp.Msg.GetValue(), Metadata{LastUpdateCommitSHA: resp.Msg.GetLastUpdateCommitSha()}, nil
+	a.otel.addTracingEvent(ctx, key, strconv.FormatFloat(resp.Msg.GetValue(), 'G', -1, 64), resp.Msg.GetLastUpdateCommitSha())
+	return resp.Msg.GetValue(), nil
 }
 
-func (a *apiProvider) GetString(ctx context.Context, key string, namespace string) (string, Metadata, error) {
+func (a *apiProvider) GetString(ctx context.Context, key string, namespace string) (string, error) {
 	lc, err := toProto(fromContext(ctx))
 	if err != nil {
-		return "", Metadata{}, errors.Wrap(err, "error transforming context")
+		return "", errors.Wrap(err, "error transforming context")
 	}
 	req := connect.NewRequest(&clientv1beta1.GetStringValueRequest{
 		Key:       key,
@@ -241,15 +252,16 @@ func (a *apiProvider) GetString(ctx context.Context, key string, namespace strin
 	req.Header().Set(lekkoAPIKeyHeader, a.apikey)
 	resp, err := a.lekkoClient.GetStringValue(ctx, req)
 	if err != nil {
-		return "", Metadata{}, errors.Wrap(err, "error hitting lekko backend")
+		return "", errors.Wrap(err, "error hitting lekko backend")
 	}
-	return resp.Msg.GetValue(), Metadata{LastUpdateCommitSHA: resp.Msg.GetLastUpdateCommitSha()}, nil
+	a.otel.addTracingEvent(ctx, key, "", resp.Msg.GetLastUpdateCommitSha())
+	return resp.Msg.GetValue(), nil
 }
 
-func (a *apiProvider) GetProto(ctx context.Context, key string, namespace string, result proto.Message) (Metadata, error) {
+func (a *apiProvider) GetProto(ctx context.Context, key string, namespace string, result proto.Message) error {
 	lc, err := toProto(fromContext(ctx))
 	if err != nil {
-		return Metadata{}, errors.Wrap(err, "error transforming context")
+		return errors.Wrap(err, "error transforming context")
 	}
 	req := connect.NewRequest(&clientv1beta1.GetProtoValueRequest{
 		Key:       key,
@@ -260,22 +272,23 @@ func (a *apiProvider) GetProto(ctx context.Context, key string, namespace string
 	req.Header().Set(lekkoAPIKeyHeader, a.apikey)
 	resp, err := a.lekkoClient.GetProtoValue(ctx, req)
 	if err != nil {
-		return Metadata{}, errors.Wrap(err, "error hitting lekko backend")
+		return errors.Wrap(err, "error hitting lekko backend")
 	}
+	a.otel.addTracingEvent(ctx, key, "", resp.Msg.GetLastUpdateCommitSha())
 	if resp.Msg.GetValueV2() != nil {
 		a := &anypb.Any{
 			TypeUrl: resp.Msg.ValueV2.GetTypeUrl(),
 			Value:   resp.Msg.ValueV2.GetValue(),
 		}
-		return Metadata{LastUpdateCommitSHA: resp.Msg.GetLastUpdateCommitSha()}, a.UnmarshalTo(result)
+		return a.UnmarshalTo(result)
 	}
-	return Metadata{LastUpdateCommitSHA: resp.Msg.GetLastUpdateCommitSha()}, resp.Msg.GetValue().UnmarshalTo(result)
+	return resp.Msg.GetValue().UnmarshalTo(result)
 }
 
-func (a *apiProvider) GetJSON(ctx context.Context, key string, namespace string, result interface{}) (Metadata, error) {
+func (a *apiProvider) GetJSON(ctx context.Context, key string, namespace string, result interface{}) error {
 	lc, err := toProto(fromContext(ctx))
 	if err != nil {
-		return Metadata{}, errors.Wrap(err, "error transforming context")
+		return errors.Wrap(err, "error transforming context")
 	}
 	req := connect.NewRequest(&clientv1beta1.GetJSONValueRequest{
 		Key:       key,
@@ -286,10 +299,11 @@ func (a *apiProvider) GetJSON(ctx context.Context, key string, namespace string,
 	req.Header().Set(lekkoAPIKeyHeader, a.apikey)
 	resp, err := a.lekkoClient.GetJSONValue(ctx, req)
 	if err != nil {
-		return Metadata{}, errors.Wrap(err, "error hitting lekko backend")
+		return errors.Wrap(err, "error hitting lekko backend")
 	}
 	if err := json.Unmarshal(resp.Msg.GetValue(), result); err != nil {
-		return Metadata{}, errors.Wrapf(err, "failed to unmarshal json into go type %T", result)
+		return errors.Wrapf(err, "failed to unmarshal json into go type %T", result)
 	}
-	return Metadata{LastUpdateCommitSHA: resp.Msg.GetLastUpdateCommitSha()}, nil
+	a.otel.addTracingEvent(ctx, key, "", resp.Msg.GetLastUpdateCommitSha())
+	return nil
 }
