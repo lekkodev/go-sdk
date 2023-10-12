@@ -70,7 +70,7 @@ func (v1b3 *v1beta3) evaluate(context map[string]interface{}) (*anypb.Any, []int
 			break
 		}
 	}
-	return v1b3.GetTree().Default, []int{}, nil
+	return v1b3.GetTree().GetDefault(), []int{}, nil
 }
 
 func (v1b3 *v1beta3) traverse(constraint *featurev1beta1.Constraint, lekkoCtx map[string]interface{}) (*anypb.Any, bool, []int, error) {

@@ -103,3 +103,24 @@ func toProto(lc lekkoContext) (map[string]*clientv1beta1.Value, error) {
 	}
 	return ret, nil
 }
+
+func FromProto(pc map[string]*clientv1beta1.Value) (lekkoContext, error) {
+	ret := make(lekkoContext)
+	for key, value := range pc {
+		var genericVal interface{}
+		switch v := value.GetKind().(type) {
+		case *clientv1beta1.Value_BoolValue:
+			genericVal = interface{}(v.BoolValue)
+		case *clientv1beta1.Value_IntValue:
+			genericVal = interface{}(v.IntValue)
+		case *clientv1beta1.Value_DoubleValue:
+			genericVal = interface{}(v.DoubleValue)
+		case *clientv1beta1.Value_StringValue:
+			genericVal = interface{}(v.StringValue)
+		default:
+			return nil, fmt.Errorf("found invalid type: %v", v)
+		}
+		ret[key] = genericVal
+	}
+	return ret, nil
+}
