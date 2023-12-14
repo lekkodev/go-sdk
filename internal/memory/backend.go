@@ -165,6 +165,13 @@ func (b *backendStore) registerWithBackoff(ctx context.Context) (string, error) 
 	var err error
 	op := func() error {
 		resp, err = b.distClient.RegisterClient(ctx, req)
+		var cerr *connect.Error
+		if errors.As(err, &cerr) {
+			if cerr.Code() == connect.CodeUnauthenticated ||
+				cerr.Code() == connect.CodeInvalidArgument {
+				return backoff.Permanent(cerr)
+			}
+		}
 		return err
 	}
 
