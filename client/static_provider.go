@@ -1,4 +1,4 @@
-// Copyright 2023 Lekko Technologies, Inc.
+// Copyright 2022 Lekko Technologies, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
-
 
 func StaticProvider(featureBytes map[string]map[string][]byte) (Provider, error) {
 	backend, err := memory.NewStaticStore(featureBytes)
