@@ -46,11 +46,11 @@ type staticStore struct {
 func (s *staticStore) Evaluate(key string, namespace string, lekkoContext map[string]interface{}, dest proto.Message) error {
 	ns, ok := s.features[namespace]
 	if !ok {
-		return errors.New("Unknown Namespace")
+		return errors.New("unknown namespace")
 	}
 	cfg, ok := ns[key]
 	if !ok {
-		return errors.New("Unknown Key")
+		return errors.New("unknown key")
 	}
 	evaluableConfig := eval.NewV1Beta3(cfg, namespace)
 	a, _, err := evaluableConfig.Evaluate(lekkoContext)

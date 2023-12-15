@@ -21,6 +21,10 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
+func FallbackProvider(primary Provider, backup Provider) Provider {
+	return &fallbackProvider{primary, backup}
+}
+
 type fallbackProvider struct {
 	primary Provider
 	backup  Provider
