@@ -33,16 +33,7 @@ type fallbackProvider struct {
 func (p *fallbackProvider) Close(ctx context.Context) error {
 	primaryErr := p.primary.Close(ctx)
 	backupErr := p.backup.Close(ctx)
-	if primaryErr != nil && backupErr != nil {
-		return errors.Join(primaryErr, backupErr)
-	}
-	if primaryErr != nil {
-		return primaryErr
-	}
-	if backupErr != nil {
-		return backupErr
-	}
-	return nil
+	return errors.Join(primaryErr, backupErr)
 }
 
 func (p *fallbackProvider) GetBool(ctx context.Context, key string, namespace string) (bool, error) {

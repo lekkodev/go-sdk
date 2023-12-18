@@ -49,13 +49,15 @@ func main() {
 			},
 		},
 	}
-	primary, err := client.StaticProvider(staticFeatures)
+	primary, err := client.NewStaticProvider(staticFeatures)
 	if err != nil {
 		log.Fatalf("Error!: %s", err)
+		return
 	}
-	backup, err := client.StaticProvider(backupStaticFeatures)
+	backup, err := client.NewStaticProvider(backupStaticFeatures)
 	if err != nil {
 		log.Fatalf("Error!: %s", err)
+		return
 	}
 	provider := client.FallbackProvider(primary, backup)
 	cl, closeF := client.NewClient(provider)
@@ -66,8 +68,16 @@ func main() {
 	namespace := "default"
 	config := "enable-puppy-dance"
 	result, err := cl.GetBool(ctx, namespace, config)
+	if err != nil {
+		log.Fatalf("Error!: %s", err)
+		return
+	}
 	log.Printf("%s/%s [%T]: %v\n", namespace, config, result, result)
 	config = "enable-puppy-trance"
 	result, err = cl.GetBool(ctx, namespace, config)
+	if err != nil {
+		log.Fatalf("Error!: %s", err)
+		return
+	}
 	log.Printf("%s/%s [%T]: %v\n", namespace, config, result, result)
 }

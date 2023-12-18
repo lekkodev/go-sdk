@@ -25,7 +25,7 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func StaticProvider(featureBytes map[string]map[string][]byte) (Provider, error) {
+func NewStaticProvider(featureBytes map[string]map[string][]byte) (Provider, error) {
 	backend, err := memory.NewStaticStore(featureBytes)
 	if err != nil {
 		return nil, err
