@@ -36,6 +36,7 @@ type Client interface {
 	// can be unmarshalled into. If an error is returned, the data
 	// stored in result is unpredictable and should not be relied upon.
 	GetProto(ctx context.Context, namespace, key string, result proto.Message) error
+	Close(ctx context.Context) error
 }
 
 type CloseFunc func(context.Context) error
@@ -96,4 +97,8 @@ func (c *client) wrap(ctx context.Context) context.Context {
 	}
 
 	return Merge(ctx, c.startupContext)
+}
+
+func (c *client) Close(ctx context.Context) error {
+	return c.provider.Close(ctx)
 }
