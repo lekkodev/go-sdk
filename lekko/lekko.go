@@ -33,26 +33,35 @@ type Client client.Client
 //
 // LEKKO_REPO_PATH - required in git mode, path where the config repo was clonned
 // LEKKO_API_KEY - Lekko API key
+//
+// If LEKKO_SDK_MODE is not set to any known value
+//	and LEKKO_API_KEY is set
+//	and LEKKO_REPO_PATH is not set
+// then 'cached' mode will be used.
 func NewClientFromEnv(ctx context.Context, ownerName, repoName string) (client.Client, error) {
 	sdkMode := os.Getenv("LEKKO_SDK_MODE")
-	var provider client.Provider
-	var err error
+	apiKey := os.Getenv("LEKKO_API_KEY")
+	repoPath := os.Getenv("LEKKO_REPO_PATH")
 	repoKey := &client.RepositoryKey{
 		OwnerName: ownerName,
 		RepoName:  repoName,
 	}
+	var provider client.Provider
+	var err error
 	switch sdkMode {
 	case "cached":
-		apiKey := os.Getenv("LEKKO_API_KEY")
 		provider, err = client.CachedAPIProvider(ctx, repoKey, client.WithAPIKey(apiKey))
 	case "git":
-		repoPath := os.Getenv("LEKKO_REPO_PATH")
 		provider, err = client.CachedGitFsProvider(ctx, repoKey, repoPath)
 	case "api":
-		apiKey := os.Getenv("LEKKO_API_KEY")
 		provider, err = client.ConnectAPIProvider(ctx, apiKey, repoKey)
 	default:
-		return nil, fmt.Errorf("unsupported Lekko SDK mode: %s", sdkMode)
+		// api key is set while repo path is not -> assuming 'cached' mode:
+		if len(apiKey) > 0 && len(repoPath) == 0 {
+			provider, err = client.CachedAPIProvider(ctx, repoKey, client.WithAPIKey(apiKey))
+		} else {
+			return nil, fmt.Errorf("unsupported Lekko SDK mode: %s", sdkMode)
+		}
 	}
 	if err != nil {
 		return nil, err
