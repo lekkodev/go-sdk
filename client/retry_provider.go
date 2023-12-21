@@ -23,7 +23,6 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-
 func makeProvider(
 	rp *retryProvider,
 	delay time.Duration,
@@ -38,7 +37,7 @@ func makeProvider(
 ) {
 	p, err := f(ctx, rk, opts...)
 	if err != nil {
-		if delay <= 60 * time.Second {
+		if delay <= 60*time.Second {
 			delay = time.Duration(float64(delay) * 1.5)
 		}
 		rp.lastError = err
@@ -62,7 +61,7 @@ func RetryProvider(f func(
 	var p Provider
 	p, err := f(ctx, rk, opts...)
 	if err != nil {
-		go makeProvider(rp, 5 * time.Second, f, ctx, rk, opts...)
+		go makeProvider(rp, 5*time.Second, f, ctx, rk, opts...)
 	}
 	rp.inner = p
 	rp.lastError = err
