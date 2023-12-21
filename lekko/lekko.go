@@ -34,10 +34,8 @@ type Client client.Client
 // LEKKO_REPO_PATH - required in git mode, path where the config repo was clonned
 // LEKKO_API_KEY - Lekko API key
 //
-// If LEKKO_SDK_MODE is not set to any known value
-//	and LEKKO_API_KEY is set
-//	and LEKKO_REPO_PATH is not set
-// then 'cached' mode will be used.
+// If LEKKO_SDK_MODE is not set to any known value and LEKKO_API_KEY is set and
+// LEKKO_REPO_PATH is not set then 'cached' mode will be used.
 func NewClientFromEnv(ctx context.Context, ownerName, repoName string) (client.Client, error) {
 	sdkMode := os.Getenv("LEKKO_SDK_MODE")
 	apiKey := os.Getenv("LEKKO_API_KEY")
