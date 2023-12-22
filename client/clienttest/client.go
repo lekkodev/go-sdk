@@ -78,6 +78,10 @@ func (tc *TestClient) WithError(namespace, key string, err error) *TestClient {
 	return tc
 }
 
+func (tc *TestClient) Close(ctx context.Context) error {
+	return nil
+}
+
 // Ensure we conform to the client interface
 var _ client.Client = (*TestClient)(nil)
 
