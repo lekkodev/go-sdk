@@ -18,6 +18,7 @@ import (
 	"context"
 	"testing"
 
+	clientv1beta1 "buf.build/gen/go/lekkodev/sdk/protocolbuffers/go/lekko/client/v1beta1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -122,4 +123,35 @@ func TestContextToProtoUnsupportedType(t *testing.T) {
 	}
 	_, err := toProto(m)
 	assert.Error(t, err)
+}
+
+func TestContextFromProto(t *testing.T) {
+	p := map[string]*clientv1beta1.Value{
+		"a": {
+			Kind: &clientv1beta1.Value_BoolValue{BoolValue: true},
+		},
+		"b": {
+			Kind: &clientv1beta1.Value_IntValue{IntValue: 42},
+		},
+		"c": {
+			Kind: &clientv1beta1.Value_DoubleValue{DoubleValue: 1.98},
+		},
+		"d": {
+			Kind: &clientv1beta1.Value_StringValue{StringValue: "foo"},
+		},
+	}
+	lc, err := FromProto(p)
+	require.NoError(t, err)
+	assert.EqualValues(t, lc["a"], true)
+	assert.EqualValues(t, lc["b"], int64(42))
+	assert.EqualValues(t, lc["c"], float64(1.98))
+	assert.EqualValues(t, lc["d"], "foo")
+}
+
+func TestContextFromProtoUnknownType(t *testing.T) {
+	p := map[string]*clientv1beta1.Value{
+		"a": {},
+	}
+	_, err := FromProto(p)
+	require.Error(t, err)
 }

@@ -1,7 +1,11 @@
-buf.build/gen/go/lekkodev/cli/bufbuild/connect-go v1.9.0-20230713234042-fbaaf4924427.1 h1:wIvg7wHKvJxchqJM+/RpewjWF4lu0E9z/VU/JqAi7WE=
-buf.build/gen/go/lekkodev/cli/bufbuild/connect-go v1.9.0-20230713234042-fbaaf4924427.1/go.mod h1:siogXpHg2bbsZpEHT0ja4k6jthLmVbD9wfAW3iEHd28=
-buf.build/gen/go/lekkodev/cli/protocolbuffers/go v1.31.0-20230713234042-fbaaf4924427.1 h1:8bIAAqZ1ZMIoCgjxByLjNp+a5dZ7cGUPOe9Gavq+tpE=
-buf.build/gen/go/lekkodev/cli/protocolbuffers/go v1.31.0-20230713234042-fbaaf4924427.1/go.mod h1:mYcnts9MJhUckfRD5/qOThXC7Kaj7O714LOw5GoGZ9c=
+buf.build/gen/go/lekkodev/cli/bufbuild/connect-go v1.10.0-20230825231008-aa11b3969136.1 h1:vSIzgXZqZgmkrBzSxAtyyi4ante9+AS+27QUmXA4UO8=
+buf.build/gen/go/lekkodev/cli/bufbuild/connect-go v1.10.0-20230825231008-aa11b3969136.1/go.mod h1:ZplQ50yUXj+sdgxLGqMbb/gGOF1i2vH0FwUUsgmHB20=
+buf.build/gen/go/lekkodev/cli/protocolbuffers/go v1.31.0-20230825231008-aa11b3969136.1 h1:FpYt0L3c65xE3jvfWzQb/oSas0e5C4d8F+KP8U65Xt8=
+buf.build/gen/go/lekkodev/cli/protocolbuffers/go v1.31.0-20230825231008-aa11b3969136.1/go.mod h1:mYcnts9MJhUckfRD5/qOThXC7Kaj7O714LOw5GoGZ9c=
+buf.build/gen/go/lekkodev/conformance/bufbuild/connect-go v1.10.0-20230926173455-fd0f48e6fd40.1 h1:3kPvTX6kPYCZBsO5dhZu1hRHX0kZGew+w7YunkfS1gA=
+buf.build/gen/go/lekkodev/conformance/bufbuild/connect-go v1.10.0-20230926173455-fd0f48e6fd40.1/go.mod h1:hSCHHO4ffDvaY9pVj/XmuALLd1AUbhwKd/RzRwgcB/k=
+buf.build/gen/go/lekkodev/conformance/protocolbuffers/go v1.31.0-20230926182653-36cc772d076c.1 h1:tFB0ZRyGiDdVpBkeD/SLDdNBPtfuWTCVAKdPsaQzuFM=
+buf.build/gen/go/lekkodev/conformance/protocolbuffers/go v1.31.0-20230926182653-36cc772d076c.1/go.mod h1:o9Iy93qvw2A+kTy+E7+GXdDuBftG5n97iPAB3vZMRuI=
 buf.build/gen/go/lekkodev/sdk/bufbuild/connect-go v1.10.0-20230810202034-1c821065b9a0.1 h1:J0Bw6bd6GUnWpGp1c2rbTlHg8Ne3G2PKYa3vTxp6SP0=
 buf.build/gen/go/lekkodev/sdk/bufbuild/connect-go v1.10.0-20230810202034-1c821065b9a0.1/go.mod h1:GOhwtQN3rKKGVXxfXwhluFsjltgDTTJsEnIrrzjlUIk=
 buf.build/gen/go/lekkodev/sdk/protocolbuffers/go v1.31.0-20230419180142-0694c10ef23c.1/go.mod h1:UOnQUnbc9uR4s5SlhBKspO4dffz+T3A6X200yYBnaZg=
