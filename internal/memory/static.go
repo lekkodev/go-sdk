@@ -43,21 +43,27 @@ type staticStore struct {
 	features map[string]map[string]*featurev1beta1.Feature
 }
 
-func (s *staticStore) Evaluate(key string, namespace string, lekkoContext map[string]interface{}, dest proto.Message) error {
+func (s *staticStore) Evaluate(key string, namespace string, lekkoContext map[string]interface{}, dest proto.Message) (*StoredConfig, error) {
 	ns, ok := s.features[namespace]
 	if !ok {
-		return errors.New("unknown namespace")
+		return nil, errors.New("unknown namespace")
 	}
 	cfg, ok := ns[key]
 	if !ok {
-		return errors.New("unknown key")
+		return nil, errors.New("unknown key")
 	}
 	evaluableConfig := eval.NewV1Beta3(cfg, namespace)
 	a, _, err := evaluableConfig.Evaluate(lekkoContext)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return a.UnmarshalTo(dest)
+	err = a.UnmarshalTo(dest)
+	if err != nil {
+		return nil, err
+	}
+	return &StoredConfig{
+		Config: cfg,
+	}, nil
 }
 
 func (s *staticStore) Close(ctx context.Context) error {

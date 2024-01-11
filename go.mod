@@ -31,8 +31,8 @@ require (
 )
 
 require (
-	buf.build/gen/go/lekkodev/cli/bufbuild/connect-go v1.10.0-20231002202706-458486b42220.1
-	buf.build/gen/go/lekkodev/cli/protocolbuffers/go v1.31.0-20231002202706-458486b42220.1
+	buf.build/gen/go/lekkodev/cli/bufbuild/connect-go v1.10.0-20240111180801-858407cba677.1
+	buf.build/gen/go/lekkodev/cli/protocolbuffers/go v1.31.0-20240111180801-858407cba677.1
 	buf.build/gen/go/lekkodev/sdk/bufbuild/connect-go v1.10.0-20231002202658-a566f0ddb92f.1
 	buf.build/gen/go/lekkodev/sdk/protocolbuffers/go v1.31.0-20231002202658-a566f0ddb92f.1
 	github.com/OneOfOne/xxhash v1.2.8
