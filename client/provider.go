@@ -23,9 +23,15 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/net/http2"
 	"google.golang.org/protobuf/proto"
 )
+
+type Metadata struct {
+	LastUpdateCommitSHA string
+}
 
 // A provider evaluates configuration from a number of sources.
 type Provider interface {
@@ -109,6 +115,7 @@ type providerConfig struct {
 	updateInterval time.Duration
 	serverPort     int32
 	allowHTTP      bool
+	otelTracing    bool
 }
 
 func (cfg *providerConfig) validate(ctx context.Context) error {
@@ -172,4 +179,37 @@ func withRepositoryKey(repoKey *RepositoryKey) ProviderOption {
 
 func (o *repositoryKeyOption) apply(cfg *providerConfig) {
 	cfg.repoKey = o.repoKey
+}
+
+type otelTracingOption struct{}
+
+func WithOtelTracing() ProviderOption {
+	return &otelTracingOption{}
+}
+
+func (o *otelTracingOption) apply(cfg *providerConfig) {
+	cfg.otelTracing = true
+}
+
+type otelTracing struct{}
+
+func (o *otelTracing) addTracingEvent(ctx context.Context, key, stringValue, version string) {
+	if o == nil {
+		return
+	}
+	span := trace.SpanFromContext(ctx)
+	attributes := []attribute.KeyValue{
+		attribute.String("config.key", key),
+	}
+	if len(stringValue) > 0 {
+		attributes = append(attributes, attribute.String("config.string_value", stringValue))
+	}
+	if len(version) > 0 {
+		attributes = append(attributes, attribute.String("config.version", version))
+	}
+
+	span.AddEvent(
+		"lekko_config",
+		trace.WithAttributes(attributes...),
+	)
 }

@@ -80,6 +80,10 @@ func ValToAny(configType featurev1beta1.FeatureType, v any) *anypb.Any {
 	return dest
 }
 
+func FakeLastUpdateCommitSHA(name string) string {
+	return fmt.Sprintf("sha of %s", name)
+}
+
 func Config(ft featurev1beta1.FeatureType, value any) *backendv1beta1.Feature {
 	a := ValToAny(ft, value)
 	parts := strings.Split(ft.String(), "_")
@@ -94,6 +98,7 @@ func Config(ft featurev1beta1.FeatureType, value any) *backendv1beta1.Feature {
 			},
 			Type: ft,
 		},
+		LastUpdateCommitSha: FakeLastUpdateCommitSHA(name),
 	}
 }
 

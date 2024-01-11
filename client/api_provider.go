@@ -17,6 +17,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"time"
 
 	clientv1beta1connect "buf.build/gen/go/lekkodev/sdk/bufbuild/connect-go/lekko/client/v1beta1/clientv1beta1connect"
@@ -56,6 +57,9 @@ func ConnectAPIProvider(ctx context.Context, apiKey string, rk *RepositoryKey, o
 		lekkoClient: clientv1beta1connect.NewConfigurationServiceClient(cfg.getHTTPClient(), cfg.url),
 		rk:          cfg.repoKey,
 	}
+	if cfg.otelTracing {
+		provider.otel = &otelTracing{}
+	}
 	if err := provider.register(ctx); err != nil {
 		return nil, err
 	}
@@ -91,6 +95,9 @@ func ConnectSidecarProvider(ctx context.Context, url string, rk *RepositoryKey, 
 		),
 		rk: cfg.repoKey,
 	}
+	if cfg.otelTracing {
+		provider.otel = &otelTracing{}
+	}
 	if err := provider.registerWithBackoff(ctx); err != nil {
 		return nil, err
 	}
@@ -120,6 +127,7 @@ type apiProvider struct {
 	apikey      string
 	lekkoClient clientv1beta1connect.ConfigurationServiceClient
 	rk          *RepositoryKey
+	otel        *otelTracing
 }
 
 // This performs an exponential backoff until the context is cancelled.
@@ -186,6 +194,7 @@ func (a *apiProvider) GetBool(ctx context.Context, key string, namespace string)
 	if err != nil {
 		return false, errors.Wrap(err, "error hitting lekko backend")
 	}
+	a.otel.addTracingEvent(ctx, key, strconv.FormatBool(resp.Msg.GetValue()), resp.Msg.GetLastUpdateCommitSha())
 	return resp.Msg.GetValue(), nil
 }
 
@@ -205,6 +214,7 @@ func (a *apiProvider) GetInt(ctx context.Context, key string, namespace string) 
 	if err != nil {
 		return 0, errors.Wrap(err, "error hitting lekko backend")
 	}
+	a.otel.addTracingEvent(ctx, key, strconv.FormatInt(resp.Msg.GetValue(), 10), resp.Msg.GetLastUpdateCommitSha())
 	return resp.Msg.GetValue(), nil
 }
 
@@ -224,6 +234,7 @@ func (a *apiProvider) GetFloat(ctx context.Context, key string, namespace string
 	if err != nil {
 		return 0, errors.Wrap(err, "error hitting lekko backend")
 	}
+	a.otel.addTracingEvent(ctx, key, strconv.FormatFloat(resp.Msg.GetValue(), 'G', -1, 64), resp.Msg.GetLastUpdateCommitSha())
 	return resp.Msg.GetValue(), nil
 }
 
@@ -243,6 +254,7 @@ func (a *apiProvider) GetString(ctx context.Context, key string, namespace strin
 	if err != nil {
 		return "", errors.Wrap(err, "error hitting lekko backend")
 	}
+	a.otel.addTracingEvent(ctx, key, "", resp.Msg.GetLastUpdateCommitSha())
 	return resp.Msg.GetValue(), nil
 }
 
@@ -262,6 +274,7 @@ func (a *apiProvider) GetProto(ctx context.Context, key string, namespace string
 	if err != nil {
 		return errors.Wrap(err, "error hitting lekko backend")
 	}
+	a.otel.addTracingEvent(ctx, key, "", resp.Msg.GetLastUpdateCommitSha())
 	if resp.Msg.GetValueV2() != nil {
 		a := &anypb.Any{
 			TypeUrl: resp.Msg.ValueV2.GetTypeUrl(),
@@ -291,5 +304,6 @@ func (a *apiProvider) GetJSON(ctx context.Context, key string, namespace string,
 	if err := json.Unmarshal(resp.Msg.GetValue(), result); err != nil {
 		return errors.Wrapf(err, "failed to unmarshal json into go type %T", result)
 	}
+	a.otel.addTracingEvent(ctx, key, "", resp.Msg.GetLastUpdateCommitSha())
 	return nil
 }

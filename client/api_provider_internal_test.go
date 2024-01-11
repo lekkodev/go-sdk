@@ -15,15 +15,17 @@
 package client
 
 import (
-	context "context"
+	"context"
 	"encoding/json"
 	"testing"
 
 	v1beta1 "buf.build/gen/go/lekkodev/sdk/protocolbuffers/go/lekko/client/v1beta1"
 	"github.com/bufbuild/connect-go"
+	"github.com/lekkodev/go-sdk/internal/oteltest"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/attribute"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -42,25 +44,29 @@ type testBackendClient struct {
 
 func (tbc *testBackendClient) GetBoolValue(ctx context.Context, req *connect.Request[v1beta1.GetBoolValueRequest]) (*connect.Response[v1beta1.GetBoolValueResponse], error) {
 	return connect.NewResponse(&v1beta1.GetBoolValueResponse{
-		Value: tbc.boolVal,
+		Value:               tbc.boolVal,
+		LastUpdateCommitSha: "commit_sha",
 	}), tbc.err
 }
 
 func (tbc *testBackendClient) GetIntValue(ctx context.Context, req *connect.Request[v1beta1.GetIntValueRequest]) (*connect.Response[v1beta1.GetIntValueResponse], error) {
 	return connect.NewResponse(&v1beta1.GetIntValueResponse{
-		Value: tbc.intVal,
+		Value:               tbc.intVal,
+		LastUpdateCommitSha: "commit_sha",
 	}), tbc.err
 }
 
 func (tbc *testBackendClient) GetFloatValue(ctx context.Context, req *connect.Request[v1beta1.GetFloatValueRequest]) (*connect.Response[v1beta1.GetFloatValueResponse], error) {
 	return connect.NewResponse(&v1beta1.GetFloatValueResponse{
-		Value: tbc.floatVal,
+		Value:               tbc.floatVal,
+		LastUpdateCommitSha: "commit_sha",
 	}), tbc.err
 }
 
 func (tbc *testBackendClient) GetStringValue(ctx context.Context, req *connect.Request[v1beta1.GetStringValueRequest]) (*connect.Response[v1beta1.GetStringValueResponse], error) {
 	return connect.NewResponse(&v1beta1.GetStringValueResponse{
-		Value: tbc.stringVal,
+		Value:               tbc.stringVal,
+		LastUpdateCommitSha: "commit_sha",
 	}), tbc.err
 }
 
@@ -71,7 +77,8 @@ func (tbc *testBackendClient) GetProtoValue(context.Context, *connect.Request[v1
 			return nil, errors.Wrap(err, "failed to marshal anyval")
 		}
 		return connect.NewResponse(&v1beta1.GetProtoValueResponse{
-			Value: anyVal,
+			Value:               anyVal,
+			LastUpdateCommitSha: "commit_sha",
 		}), tbc.err
 	}
 	if tbc.protoValV2 != nil {
@@ -84,6 +91,7 @@ func (tbc *testBackendClient) GetProtoValue(context.Context, *connect.Request[v1
 				TypeUrl: anyVal.GetTypeUrl(),
 				Value:   anyVal.GetValue(),
 			},
+			LastUpdateCommitSha: "commit_sha",
 		}), tbc.err
 	}
 	return nil, tbc.err
@@ -91,7 +99,8 @@ func (tbc *testBackendClient) GetProtoValue(context.Context, *connect.Request[v1
 
 func (tbc *testBackendClient) GetJSONValue(context.Context, *connect.Request[v1beta1.GetJSONValueRequest]) (*connect.Response[v1beta1.GetJSONValueResponse], error) {
 	return connect.NewResponse(&v1beta1.GetJSONValueResponse{
-		Value: tbc.jsonVal,
+		Value:               tbc.jsonVal,
+		LastUpdateCommitSha: "commit_sha",
 	}), tbc.err
 }
 
@@ -106,16 +115,27 @@ func (tbc *testBackendClient) Deregister(context.Context, *connect.Request[v1bet
 func testProvider(backendCli *testBackendClient) Provider {
 	return &apiProvider{
 		lekkoClient: backendCli,
+		otel:        &otelTracing{},
 	}
 }
 
 func TestGetBoolConfig(t *testing.T) {
+	ctx, otelHelper := oteltest.InitOtelAndStartSpan()
+
 	// success
-	ctx := context.Background()
 	cli := testProvider(&testBackendClient{boolVal: true})
 	result, err := cli.GetBool(ctx, "test_key", "namespace")
 	assert.NoError(t, err)
 	assert.True(t, result)
+
+	// check that event was added to the OTel span
+	event := otelHelper.EndSpanAndGetConfigEvent(t)
+	expected := []attribute.KeyValue{
+		attribute.String("config.key", "test_key"),
+		attribute.String("config.string_value", "true"),
+		attribute.String("config.version", "commit_sha"),
+	}
+	assert.ElementsMatch(t, expected, event.Attributes)
 
 	// test passing up backend error
 	cli = testProvider(&testBackendClient{err: errors.New("error")})
@@ -124,12 +144,22 @@ func TestGetBoolConfig(t *testing.T) {
 }
 
 func TestGetIntConfig(t *testing.T) {
+	ctx, otelHelper := oteltest.InitOtelAndStartSpan()
+
 	// success
-	ctx := context.Background()
 	cli := testProvider(&testBackendClient{intVal: 8})
 	result, err := cli.GetInt(ctx, "test_key", "namespace")
 	assert.NoError(t, err)
 	assert.Equal(t, int64(8), result)
+
+	// check that event was added to the OTel span
+	event := otelHelper.EndSpanAndGetConfigEvent(t)
+	expected := []attribute.KeyValue{
+		attribute.String("config.key", "test_key"),
+		attribute.String("config.string_value", "8"),
+		attribute.String("config.version", "commit_sha"),
+	}
+	assert.ElementsMatch(t, expected, event.Attributes)
 
 	// test passing up backend error
 	cli = testProvider(&testBackendClient{err: errors.New("error")})
@@ -138,12 +168,22 @@ func TestGetIntConfig(t *testing.T) {
 }
 
 func TestGetFloatConfig(t *testing.T) {
+	ctx, otelHelper := oteltest.InitOtelAndStartSpan()
+
 	// success
-	ctx := context.Background()
 	cli := testProvider(&testBackendClient{floatVal: 8.89})
 	result, err := cli.GetFloat(ctx, "test_key", "namespace")
 	assert.NoError(t, err)
 	assert.Equal(t, 8.89, result)
+
+	// check that event was added to the OTel span
+	event := otelHelper.EndSpanAndGetConfigEvent(t)
+	expected := []attribute.KeyValue{
+		attribute.String("config.key", "test_key"),
+		attribute.String("config.string_value", "8.89"),
+		attribute.String("config.version", "commit_sha"),
+	}
+	assert.ElementsMatch(t, expected, event.Attributes)
 
 	// test passing up backend error
 	cli = testProvider(&testBackendClient{err: errors.New("error")})
@@ -152,12 +192,21 @@ func TestGetFloatConfig(t *testing.T) {
 }
 
 func TestGetStringConfig(t *testing.T) {
+	ctx, otelHelper := oteltest.InitOtelAndStartSpan()
+
 	// success
-	ctx := context.Background()
 	cli := testProvider(&testBackendClient{stringVal: "foo"})
 	result, err := cli.GetString(ctx, "test_key", "namespace")
 	assert.NoError(t, err)
 	assert.Equal(t, "foo", result)
+
+	// check that event was added to the OTel span
+	event := otelHelper.EndSpanAndGetConfigEvent(t)
+	expected := []attribute.KeyValue{
+		attribute.String("config.key", "test_key"),
+		attribute.String("config.version", "commit_sha"),
+	}
+	assert.ElementsMatch(t, expected, event.Attributes)
 
 	// test passing up backend error
 	cli = testProvider(&testBackendClient{err: errors.New("error")})
@@ -176,12 +225,21 @@ func TestGetProtoConfig(t *testing.T) {
 	// that is returned via the api.
 	for _, version := range []string{"v1", "v2"} {
 		t.Run(version, func(t *testing.T) {
+			ctx, otelHelper := oteltest.InitOtelAndStartSpan()
+
 			// success
-			ctx := context.Background()
 			cli := protoProvider(version, wrapperspb.Int64(59), nil)
 			result := &wrapperspb.Int64Value{}
 			require.NoError(t, cli.GetProto(ctx, "test_key", "namespace", result))
 			assert.EqualValues(t, int64(59), result.Value)
+
+			// check that event was added to the OTel span
+			event := otelHelper.EndSpanAndGetConfigEvent(t)
+			expected := []attribute.KeyValue{
+				attribute.String("config.key", "test_key"),
+				attribute.String("config.version", "commit_sha"),
+			}
+			assert.ElementsMatch(t, expected, event.Attributes)
 
 			// test passing up backend error
 			cli = protoProvider(version, wrapperspb.Int64(59), errors.New("error"))
@@ -214,8 +272,9 @@ type testStruct struct {
 }
 
 func TestGetJSONConfig(t *testing.T) {
+	ctx, otelHelper := oteltest.InitOtelAndStartSpan()
+
 	// success
-	ctx := context.Background()
 	ts := &testStruct{Foo: 1, Bar: &barType{Baz: 12}}
 	bytes, err := json.Marshal(ts)
 	require.NoError(t, err)
@@ -223,6 +282,14 @@ func TestGetJSONConfig(t *testing.T) {
 	result := &testStruct{}
 	require.NoError(t, cli.GetJSON(ctx, "test_key", "namespace", result))
 	assert.EqualValues(t, ts, result)
+
+	// check that event was added to the OTel span
+	event := otelHelper.EndSpanAndGetConfigEvent(t)
+	expected := []attribute.KeyValue{
+		attribute.String("config.key", "test_key"),
+		attribute.String("config.version", "commit_sha"),
+	}
+	assert.ElementsMatch(t, expected, event.Attributes)
 
 	// test passing up backend error
 	cli = testProvider(&testBackendClient{jsonVal: bytes, err: errors.New("error")})
@@ -235,7 +302,8 @@ func TestGetJSONConfig(t *testing.T) {
 }
 
 func TestGetJSONConfigArr(t *testing.T) {
-	ctx := context.Background()
+	ctx, otelHelper := oteltest.InitOtelAndStartSpan()
+
 	ts := []int{1, 2, 3}
 	bytes, err := json.Marshal(&ts)
 	require.NoError(t, err)
@@ -243,6 +311,14 @@ func TestGetJSONConfigArr(t *testing.T) {
 	result := []int{45}
 	require.NoError(t, cli.GetJSON(ctx, "test_key", "namespace", &result))
 	assert.EqualValues(t, ts, result)
+
+	// check that event was added to the OTel span
+	event := otelHelper.EndSpanAndGetConfigEvent(t)
+	expected := []attribute.KeyValue{
+		attribute.String("config.key", "test_key"),
+		attribute.String("config.version", "commit_sha"),
+	}
+	assert.ElementsMatch(t, expected, event.Attributes)
 }
 
 func TestGetJSONConfigError(t *testing.T) {
@@ -252,8 +328,7 @@ func TestGetJSONConfigError(t *testing.T) {
 	require.NoError(t, err)
 	cli := testProvider(&testBackendClient{jsonVal: bytes})
 	result := []string{"foo"}
-	err = cli.GetJSON(ctx, "test_key", "namespace", &result)
-	assert.Error(t, err)
+	assert.Error(t, cli.GetJSON(ctx, "test_key", "namespace", &result))
 	// Note: the value of &result is now undefined and api
 	// behavior may change, so it should not be depended on
 }

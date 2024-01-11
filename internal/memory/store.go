@@ -43,8 +43,9 @@ func newStore(owner, repo string) *store {
 }
 
 type configData struct {
-	config    *featurev1beta1.Feature
-	configSHA string
+	config              *featurev1beta1.Feature
+	configSHA           string
+	lastUpdateCommitSHA string
 }
 
 // store implements an in-memory store for configurations. It stores
@@ -58,9 +59,9 @@ type store struct {
 	ownerName, repoName string
 }
 
-type storedConfig struct {
-	Config               *featurev1beta1.Feature
-	CommitSHA, ConfigSHA string
+type StoredConfig struct {
+	Config                                    *featurev1beta1.Feature
+	CommitSHA, ConfigSHA, LastUpdateCommitSHA string
 }
 
 // Attempts to atomically update the store. This method will first hold a read-lock
@@ -92,8 +93,9 @@ func (s *store) update(contents *backendv1beta1.GetRepositoryContentsResponse) (
 		newConfigs[ns.GetName()] = make(map[string]configData)
 		for _, cfg := range ns.GetFeatures() {
 			newConfigs[ns.GetName()][cfg.GetName()] = configData{
-				config:    cfg.GetFeature(),
-				configSHA: cfg.GetSha(),
+				config:              cfg.GetFeature(),
+				configSHA:           cfg.GetSha(),
+				lastUpdateCommitSHA: cfg.GetLastUpdateCommitSha(),
 			}
 		}
 	}
@@ -116,7 +118,7 @@ func (s *store) update(contents *backendv1beta1.GetRepositoryContentsResponse) (
 	return true, nil
 }
 
-func (s *store) get(namespace, key string) (*storedConfig, error) {
+func (s *store) get(namespace, key string) (*StoredConfig, error) {
 	var data configData
 	var ok bool
 	var commitSHA string
@@ -130,10 +132,11 @@ func (s *store) get(namespace, key string) (*storedConfig, error) {
 	if !ok {
 		return nil, ErrConfigNotFound
 	}
-	return &storedConfig{
-		Config:    data.config,
-		CommitSHA: commitSHA,
-		ConfigSHA: data.configSHA,
+	return &StoredConfig{
+		Config:              data.config,
+		CommitSHA:           commitSHA,
+		ConfigSHA:           data.configSHA,
+		LastUpdateCommitSHA: data.lastUpdateCommitSHA,
 	}, nil
 }
 
@@ -158,7 +161,7 @@ func (s *store) getCommitSha() string {
 	return ret
 }
 
-func (s *store) evaluateType(key string, namespace string, lc map[string]interface{}, dest proto.Message) (*storedConfig, eval.ResultPath, error) {
+func (s *store) evaluateType(key string, namespace string, lc map[string]interface{}, dest proto.Message) (*StoredConfig, eval.ResultPath, error) {
 	cfg, err := s.get(namespace, key)
 	if err != nil {
 		return nil, nil, err

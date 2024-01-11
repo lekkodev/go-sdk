@@ -190,23 +190,24 @@ func (g *gitStore) watch(ctx context.Context, fsChan <-chan notify.EventInfo) {
 	}
 }
 
-func (g *gitStore) Evaluate(key string, namespace string, lekkoContext map[string]interface{}, dest proto.Message) error {
+func (g *gitStore) Evaluate(key string, namespace string, lekkoContext map[string]interface{}, dest proto.Message) (*StoredConfig, error) {
 	cfg, rp, err := g.store.evaluateType(key, namespace, lekkoContext, dest)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if g.eb != nil {
 		g.eb.track(&backendv1beta1.FlagEvaluationEvent{
-			RepoKey:       g.repoKey,
-			CommitSha:     cfg.CommitSHA,
-			FeatureSha:    cfg.ConfigSHA,
-			NamespaceName: namespace,
-			FeatureName:   cfg.Config.GetKey(),
-			ContextKeys:   toContextKeysProto(lekkoContext),
-			ResultPath:    toResultPathProto(rp),
+			RepoKey:             g.repoKey,
+			CommitSha:           cfg.CommitSHA,
+			LastUpdateCommitSha: cfg.CommitSHA,
+			FeatureSha:          cfg.ConfigSHA,
+			NamespaceName:       namespace,
+			FeatureName:         cfg.Config.GetKey(),
+			ContextKeys:         toContextKeysProto(lekkoContext),
+			ResultPath:          toResultPathProto(rp),
 		})
 	}
-	return nil
+	return cfg, nil
 }
 
 func (g *gitStore) Close(ctx context.Context) error {
