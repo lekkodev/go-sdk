@@ -43,7 +43,7 @@ type staticStore struct {
 	features map[string]map[string]*featurev1beta1.Feature
 }
 
-func (s *staticStore) Evaluate(key string, namespace string, lekkoContext map[string]interface{}, dest proto.Message) (*StoredConfig, error) {
+func (s *staticStore) Evaluate(ctx context.Context, key string, namespace string, lekkoContext map[string]interface{}, dest proto.Message) (*StoredConfig, error) {
 	ns, ok := s.features[namespace]
 	if !ok {
 		return nil, errors.New("unknown namespace")

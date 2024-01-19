@@ -17,6 +17,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -52,6 +53,7 @@ func ConnectAPIProvider(ctx context.Context, apiKey string, rk *RepositoryKey, o
 	if err := cfg.validate(ctx); err != nil {
 		return nil, err
 	}
+	fmt.Println(cfg.url)
 	provider := &apiProvider{
 		apikey:      cfg.apiKey,
 		lekkoClient: clientv1beta1connect.NewConfigurationServiceClient(cfg.getHTTPClient(), cfg.url),

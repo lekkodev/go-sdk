@@ -31,10 +31,10 @@ require (
 )
 
 require (
-	buf.build/gen/go/lekkodev/cli/bufbuild/connect-go v1.10.0-20240111180801-858407cba677.1
-	buf.build/gen/go/lekkodev/cli/protocolbuffers/go v1.31.0-20240111180801-858407cba677.1
+	buf.build/gen/go/lekkodev/cli/bufbuild/connect-go v1.10.0-20240112001433-0d792c3c69cc.1
+	buf.build/gen/go/lekkodev/cli/protocolbuffers/go v1.32.0-20240116234625-8a2b4d24b6a7.1
 	buf.build/gen/go/lekkodev/sdk/bufbuild/connect-go v1.10.0-20231002202658-a566f0ddb92f.1
-	buf.build/gen/go/lekkodev/sdk/protocolbuffers/go v1.31.0-20231002202658-a566f0ddb92f.1
+	buf.build/gen/go/lekkodev/sdk/protocolbuffers/go v1.32.0-20231002202658-a566f0ddb92f.1
 	github.com/OneOfOne/xxhash v1.2.8
 	github.com/cenkalti/backoff/v4 v4.2.0
 	github.com/go-git/go-billy/v5 v5.4.1
@@ -46,6 +46,6 @@ require (
 	go.opentelemetry.io/otel/sdk v1.19.0
 	go.opentelemetry.io/otel/trace v1.19.0
 	golang.org/x/net v0.10.0
-	google.golang.org/protobuf v1.31.0
+	google.golang.org/protobuf v1.32.0
 	gopkg.in/yaml.v3 v3.0.1
 )

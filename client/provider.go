@@ -17,6 +17,7 @@ package client
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -110,12 +111,13 @@ func WithServerOption(port int32) ProviderOption {
 func (o *ServerOption) apply(pc *providerConfig) { pc.serverPort = o.Port }
 
 type providerConfig struct {
-	repoKey        *RepositoryKey
-	apiKey, url    string
-	updateInterval time.Duration
-	serverPort     int32
-	allowHTTP      bool
-	otelTracing    bool
+	repoKey             *RepositoryKey
+	apiKey, url         string
+	updateInterval      time.Duration
+	serverPort          int32
+	allowHTTP           bool
+	otelTracing         bool
+	reportContextValues bool
 }
 
 func (cfg *providerConfig) validate(ctx context.Context) error {
@@ -181,6 +183,16 @@ func (o *repositoryKeyOption) apply(cfg *providerConfig) {
 	cfg.repoKey = o.repoKey
 }
 
+type reportContextValuesOption struct{}
+
+func WithReportContextValues() ProviderOption {
+	return &reportContextValuesOption{}
+}
+
+func (o *reportContextValuesOption) apply(cfg *providerConfig) {
+	cfg.reportContextValues = true
+}
+
 type otelTracingOption struct{}
 
 func WithOtelTracing() ProviderOption {
@@ -197,19 +209,23 @@ func (o *otelTracing) addTracingEvent(ctx context.Context, key, stringValue, ver
 	if o == nil {
 		return
 	}
+
 	span := trace.SpanFromContext(ctx)
-	attributes := []attribute.KeyValue{
-		attribute.String("config.key", key),
-	}
+
+	var attributes []attribute.KeyValue
 	if len(stringValue) > 0 {
-		attributes = append(attributes, attribute.String("config.string_value", stringValue))
-	}
-	if len(version) > 0 {
-		attributes = append(attributes, attribute.String("config.version", version))
+		attributes = append(attributes, attribute.String(fmt.Sprintf("config.%s.string_value", key), stringValue))
 	}
 
+	span.SetAttributes(attributes...)
+
+	// TODO: add repo and namespace
+	if len(version) > 0 {
+		attributes = append(attributes, attribute.String(fmt.Sprintf("config.%s.version", key), version))
+	}
+	attributes = append(attributes, attribute.String("config.key", key))
 	span.AddEvent(
-		"lekko_config",
+		fmt.Sprintf("lekko.%s", key),
 		trace.WithAttributes(attributes...),
 	)
 }

@@ -63,40 +63,40 @@ func TestBackendStore(t *testing.T) {
 		contents:   repositoryContents(),
 	}
 	ctx := context.Background()
-	b, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, 6, 0, testVersion)
+	b, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, 6, 0, testVersion, false)
 	require.NoError(t, err, "no error during register and init")
 
 	assert.Equal(t, testVersion, tds.registrationVersion)
 
 	bv := &wrapperspb.BoolValue{}
-	meta, err := b.Evaluate("bool", "ns-1", nil, bv)
+	meta, err := b.Evaluate(ctx, "bool", "ns-1", nil, bv)
 	require.NoError(t, err)
 	assert.Equal(t, meta.LastUpdateCommitSHA, testdata.FakeLastUpdateCommitSHA("bool"))
 	assert.Equal(t, true, bv.Value)
 	sv := &wrapperspb.StringValue{}
-	meta, err = b.Evaluate("string", "ns-1", nil, sv)
+	meta, err = b.Evaluate(ctx, "string", "ns-1", nil, sv)
 	require.NoError(t, err)
 	assert.Equal(t, "foo", sv.Value)
 	assert.Equal(t, meta.LastUpdateCommitSHA, testdata.FakeLastUpdateCommitSHA("string"))
 	iv := &wrapperspb.Int64Value{}
-	meta, err = b.Evaluate("int", "ns-1", nil, iv)
+	meta, err = b.Evaluate(ctx, "int", "ns-1", nil, iv)
 	require.NoError(t, err)
 	assert.Equal(t, int64(42), iv.Value)
 	assert.Equal(t, meta.LastUpdateCommitSHA, testdata.FakeLastUpdateCommitSHA("int"))
 	fv := &wrapperspb.DoubleValue{}
-	meta, err = b.Evaluate("float", "ns-1", nil, fv)
+	meta, err = b.Evaluate(ctx, "float", "ns-1", nil, fv)
 	require.NoError(t, err)
 	assert.Equal(t, float64(1.2), fv.Value)
 	assert.Equal(t, meta.LastUpdateCommitSHA, testdata.FakeLastUpdateCommitSHA("float"))
 	vv := &structpb.Value{}
-	meta, err = b.Evaluate("json", "ns-1", nil, vv)
+	meta, err = b.Evaluate(ctx, "json", "ns-1", nil, vv)
 	require.NoError(t, err)
 	expectedValue, err := structpb.NewValue([]any{1, 2.5, "bar"})
 	require.NoError(t, err)
 	assert.True(t, proto.Equal(expectedValue, vv))
 	assert.Equal(t, meta.LastUpdateCommitSHA, testdata.FakeLastUpdateCommitSHA("json"))
 	pv := &wrapperspb.Int32Value{}
-	meta, err = b.Evaluate("proto", "ns-1", nil, pv)
+	meta, err = b.Evaluate(ctx, "proto", "ns-1", nil, pv)
 	require.NoError(t, err)
 	assert.Equal(t, int32(58), pv.Value)
 	assert.Equal(t, meta.LastUpdateCommitSHA, testdata.FakeLastUpdateCommitSHA("proto"))
@@ -114,7 +114,7 @@ func TestBackendStoreRegisterError(t *testing.T) {
 		registerErr: backoff.Permanent(errors.New("registration failed")),
 	}
 	ctx := context.Background()
-	_, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, eventsBatchSize, 0, testVersion)
+	_, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, eventsBatchSize, 0, testVersion, false)
 	require.Error(t, err)
 }
 
@@ -125,7 +125,7 @@ func TestBackendStoreDeregisterError(t *testing.T) {
 		deregisterErr: errors.New("deregistration failed"),
 	}
 	ctx := context.Background()
-	b, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, eventsBatchSize, 0, testVersion)
+	b, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, eventsBatchSize, 0, testVersion, false)
 	require.NoError(t, err)
 
 	require.Error(t, b.Close(ctx))
@@ -138,7 +138,7 @@ func TestBackendStoreGetContentsError(t *testing.T) {
 		getContentsErr: backoff.Permanent(errors.New("get contents failed")),
 	}
 	ctx := context.Background()
-	_, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, eventsBatchSize, 0, testVersion)
+	_, err := newBackendStore(ctx, "apikey", "owner", "repo", 5*time.Second, tds, eventsBatchSize, 0, testVersion, false)
 	require.Error(t, err)
 }
 
@@ -199,7 +199,7 @@ func TestToContextKeysProto(t *testing.T) {
 	lekkoContext["float64"] = float64(32.5)
 	lekkoContext["string"] = "foo"
 
-	result := toContextKeysProto(lekkoContext)
+	result := toContextKeysProto(lekkoContext, false)
 	assert.Contains(t, result, &backendv1beta1.ContextKey{Key: "bool", Type: "bool"})
 	assert.Contains(t, result, &backendv1beta1.ContextKey{Key: "int", Type: "int"})
 	assert.Contains(t, result, &backendv1beta1.ContextKey{Key: "int32", Type: "int"})
@@ -207,4 +207,13 @@ func TestToContextKeysProto(t *testing.T) {
 	assert.Contains(t, result, &backendv1beta1.ContextKey{Key: "float", Type: "float"})
 	assert.Contains(t, result, &backendv1beta1.ContextKey{Key: "float64", Type: "float"})
 	assert.Contains(t, result, &backendv1beta1.ContextKey{Key: "string", Type: "string"})
+
+	result = toContextKeysProto(lekkoContext, true)
+	assert.Contains(t, result, &backendv1beta1.ContextKey{Key: "bool", Type: "bool", StringValue: "true"})
+	assert.Contains(t, result, &backendv1beta1.ContextKey{Key: "int", Type: "int", StringValue: "12"})
+	assert.Contains(t, result, &backendv1beta1.ContextKey{Key: "int32", Type: "int", StringValue: "12"})
+	assert.Contains(t, result, &backendv1beta1.ContextKey{Key: "uint32", Type: "int", StringValue: "12"})
+	assert.Contains(t, result, &backendv1beta1.ContextKey{Key: "float", Type: "float", StringValue: "32.5"})
+	assert.Contains(t, result, &backendv1beta1.ContextKey{Key: "float64", Type: "float", StringValue: "32.5"})
+	assert.Contains(t, result, &backendv1beta1.ContextKey{Key: "string", Type: "string", StringValue: "foo"})
 }

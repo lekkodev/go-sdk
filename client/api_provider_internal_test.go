@@ -132,8 +132,8 @@ func TestGetBoolConfig(t *testing.T) {
 	event := otelHelper.EndSpanAndGetConfigEvent(t)
 	expected := []attribute.KeyValue{
 		attribute.String("config.key", "test_key"),
-		attribute.String("config.string_value", "true"),
-		attribute.String("config.version", "commit_sha"),
+		attribute.String("config.test_key.string_value", "true"),
+		attribute.String("config.test_key.version", "commit_sha"),
 	}
 	assert.ElementsMatch(t, expected, event.Attributes)
 
@@ -156,8 +156,8 @@ func TestGetIntConfig(t *testing.T) {
 	event := otelHelper.EndSpanAndGetConfigEvent(t)
 	expected := []attribute.KeyValue{
 		attribute.String("config.key", "test_key"),
-		attribute.String("config.string_value", "8"),
-		attribute.String("config.version", "commit_sha"),
+		attribute.String("config.test_key.string_value", "8"),
+		attribute.String("config.test_key.version", "commit_sha"),
 	}
 	assert.ElementsMatch(t, expected, event.Attributes)
 
@@ -180,8 +180,8 @@ func TestGetFloatConfig(t *testing.T) {
 	event := otelHelper.EndSpanAndGetConfigEvent(t)
 	expected := []attribute.KeyValue{
 		attribute.String("config.key", "test_key"),
-		attribute.String("config.string_value", "8.89"),
-		attribute.String("config.version", "commit_sha"),
+		attribute.String("config.test_key.string_value", "8.89"),
+		attribute.String("config.test_key.version", "commit_sha"),
 	}
 	assert.ElementsMatch(t, expected, event.Attributes)
 
@@ -204,7 +204,7 @@ func TestGetStringConfig(t *testing.T) {
 	event := otelHelper.EndSpanAndGetConfigEvent(t)
 	expected := []attribute.KeyValue{
 		attribute.String("config.key", "test_key"),
-		attribute.String("config.version", "commit_sha"),
+		attribute.String("config.test_key.version", "commit_sha"),
 	}
 	assert.ElementsMatch(t, expected, event.Attributes)
 
@@ -237,7 +237,7 @@ func TestGetProtoConfig(t *testing.T) {
 			event := otelHelper.EndSpanAndGetConfigEvent(t)
 			expected := []attribute.KeyValue{
 				attribute.String("config.key", "test_key"),
-				attribute.String("config.version", "commit_sha"),
+				attribute.String("config.test_key.version", "commit_sha"),
 			}
 			assert.ElementsMatch(t, expected, event.Attributes)
 
@@ -287,7 +287,7 @@ func TestGetJSONConfig(t *testing.T) {
 	event := otelHelper.EndSpanAndGetConfigEvent(t)
 	expected := []attribute.KeyValue{
 		attribute.String("config.key", "test_key"),
-		attribute.String("config.version", "commit_sha"),
+		attribute.String("config.test_key.version", "commit_sha"),
 	}
 	assert.ElementsMatch(t, expected, event.Attributes)
 
@@ -316,7 +316,7 @@ func TestGetJSONConfigArr(t *testing.T) {
 	event := otelHelper.EndSpanAndGetConfigEvent(t)
 	expected := []attribute.KeyValue{
 		attribute.String("config.key", "test_key"),
-		attribute.String("config.version", "commit_sha"),
+		attribute.String("config.test_key.version", "commit_sha"),
 	}
 	assert.ElementsMatch(t, expected, event.Attributes)
 }

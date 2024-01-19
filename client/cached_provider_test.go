@@ -65,8 +65,8 @@ func TestInMemoryProviderSuccess(t *testing.T) {
 	event := otelHelper.EndSpanAndGetConfigEvent(t)
 	expected := []attribute.KeyValue{
 		attribute.String("config.key", "bool"),
-		attribute.String("config.string_value", "true"),
-		attribute.String("config.version", testdata.FakeLastUpdateCommitSHA("bool")),
+		attribute.String("config.bool.string_value", "true"),
+		attribute.String("config.bool.version", testdata.FakeLastUpdateCommitSHA("bool")),
 	}
 	assert.ElementsMatch(t, expected, event.Attributes)
 
@@ -77,7 +77,7 @@ func TestInMemoryProviderSuccess(t *testing.T) {
 	event = otelHelper.EndSpanAndGetConfigEvent(t)
 	expected = []attribute.KeyValue{
 		attribute.String("config.key", "string"),
-		attribute.String("config.version", testdata.FakeLastUpdateCommitSHA("string")),
+		attribute.String("config.string.version", testdata.FakeLastUpdateCommitSHA("string")),
 	}
 	assert.ElementsMatch(t, expected, event.Attributes)
 
@@ -88,8 +88,8 @@ func TestInMemoryProviderSuccess(t *testing.T) {
 	event = otelHelper.EndSpanAndGetConfigEvent(t)
 	expected = []attribute.KeyValue{
 		attribute.String("config.key", "int"),
-		attribute.String("config.string_value", "42"),
-		attribute.String("config.version", testdata.FakeLastUpdateCommitSHA("int")),
+		attribute.String("config.int.string_value", "42"),
+		attribute.String("config.int.version", testdata.FakeLastUpdateCommitSHA("int")),
 	}
 	assert.ElementsMatch(t, expected, event.Attributes)
 
@@ -100,8 +100,8 @@ func TestInMemoryProviderSuccess(t *testing.T) {
 	event = otelHelper.EndSpanAndGetConfigEvent(t)
 	expected = []attribute.KeyValue{
 		attribute.String("config.key", "float"),
-		attribute.String("config.string_value", "1.2"),
-		attribute.String("config.version", testdata.FakeLastUpdateCommitSHA("float")),
+		attribute.String("config.float.string_value", "1.2"),
+		attribute.String("config.float.version", testdata.FakeLastUpdateCommitSHA("float")),
 	}
 	assert.ElementsMatch(t, expected, event.Attributes)
 
@@ -112,7 +112,7 @@ func TestInMemoryProviderSuccess(t *testing.T) {
 	event = otelHelper.EndSpanAndGetConfigEvent(t)
 	expected = []attribute.KeyValue{
 		attribute.String("config.key", "json"),
-		attribute.String("config.version", testdata.FakeLastUpdateCommitSHA("json")),
+		attribute.String("config.json.version", testdata.FakeLastUpdateCommitSHA("json")),
 	}
 	assert.ElementsMatch(t, expected, event.Attributes)
 
@@ -123,7 +123,7 @@ func TestInMemoryProviderSuccess(t *testing.T) {
 	assert.ElementsMatch(t,
 		[]attribute.KeyValue{
 			attribute.String("config.key", "proto"),
-			attribute.String("config.version", testdata.FakeLastUpdateCommitSHA("proto")),
+			attribute.String("config.proto.version", testdata.FakeLastUpdateCommitSHA("proto")),
 		},
 		otelHelper.EndSpanAndGetConfigEvent(t).Attributes,
 	)
@@ -179,7 +179,7 @@ type testStore struct {
 	closeErr error
 }
 
-func (ts testStore) Evaluate(key string, namespace string, lc map[string]interface{}, dest proto.Message) (*memory.StoredConfig, error) {
+func (ts testStore) Evaluate(ctx context.Context, key string, namespace string, lc map[string]interface{}, dest proto.Message) (*memory.StoredConfig, error) {
 	a, ok := ts.configs[key]
 	if !ok {
 		return nil, errors.Errorf("key %s not found", key)

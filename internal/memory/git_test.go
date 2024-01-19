@@ -37,23 +37,23 @@ func TestGitStore(t *testing.T) {
 	ctx := context.Background()
 	commitHash, storer, fs := setupFS(t)
 
-	gs, err := newGitStore(ctx, "", "lekkodev", "testrepo", storer, fs, nil, 10, false, 0, testVersion)
+	gs, err := newGitStore(ctx, "", "lekkodev", "testrepo", storer, fs, nil, 10, false, 0, testVersion, false)
 	require.NoError(t, err)
 	assert.NotNil(t, gs)
 
 	bv := wrapperspb.BoolValue{}
-	meta, err := gs.Evaluate("example", "default", nil, &bv)
+	meta, err := gs.Evaluate(ctx, "example", "default", nil, &bv)
 	require.NoError(t, err)
 	assert.True(t, bv.Value)
 	assert.Equal(t, meta.LastUpdateCommitSHA, commitHash.String())
 
 	sv := wrapperspb.StringValue{}
-	meta, err = gs.Evaluate("tiers", "test-namespace", nil, &sv)
+	meta, err = gs.Evaluate(ctx, "tiers", "test-namespace", nil, &sv)
 	require.NoError(t, err)
 	assert.Equal(t, sv.Value, "foo")
 	assert.Equal(t, meta.LastUpdateCommitSHA, commitHash.String())
 
-	_, err = gs.Evaluate("not-a-key", "not-a-ns", nil, &bv)
+	_, err = gs.Evaluate(ctx, "not-a-key", "not-a-ns", nil, &bv)
 	require.Error(t, err)
 
 	require.NoError(t, gs.Close(ctx))

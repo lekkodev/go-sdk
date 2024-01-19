@@ -16,6 +16,7 @@ package oteltest
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -53,6 +54,6 @@ func (o *otelHelper) EndSpanAndGetConfigEvent(t *testing.T) sdktrace.Event {
 		}
 	}
 	assert.NotNil(t, event)
-	assert.Equal(t, "lekko_config", event.Name)
+	assert.True(t, strings.HasPrefix(event.Name, "lekko."))
 	return event
 }

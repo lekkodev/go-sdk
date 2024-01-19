@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/lekkodev/go-sdk/client"
 )
@@ -40,19 +41,35 @@ func NewClientFromEnv(ctx context.Context, ownerName, repoName string) (client.C
 	sdkMode := os.Getenv("LEKKO_SDK_MODE")
 	apiKey := os.Getenv("LEKKO_API_KEY")
 	repoPath := os.Getenv("LEKKO_REPO_PATH")
+	url := os.Getenv("LEKKO_URL")
 	repoKey := &client.RepositoryKey{
 		OwnerName: ownerName,
 		RepoName:  repoName,
 	}
+
+	opts := []client.ProviderOption{
+		client.WithAPIKey(apiKey),
+		client.WithURL(url),
+		client.WithOtelTracing(),
+		client.WithReportContextValues(),
+	}
+	if strings.HasPrefix(url, "http://localhost") {
+		opts = append(opts, client.WithAllowHTTP())
+	}
+
 	var provider client.Provider
 	var err error
 	switch sdkMode {
 	case "cached":
-		provider, err = client.CachedAPIProvider(ctx, repoKey, client.WithAPIKey(apiKey))
+		provider, err = client.CachedAPIProvider(
+			ctx,
+			repoKey,
+			opts...,
+		)
 	case "git":
-		provider, err = client.CachedGitFsProvider(ctx, repoKey, repoPath)
+		provider, err = client.CachedGitFsProvider(ctx, repoKey, repoPath, opts...)
 	case "api":
-		provider, err = client.ConnectAPIProvider(ctx, apiKey, repoKey)
+		provider, err = client.ConnectAPIProvider(ctx, apiKey, repoKey, opts...)
 	default:
 		// api key is set while repo path is not -> assuming 'cached' mode:
 		if len(apiKey) > 0 && len(repoPath) == 0 {

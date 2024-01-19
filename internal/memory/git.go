@@ -33,6 +33,7 @@ import (
 	"github.com/go-git/go-git/v5/storage"
 	"github.com/go-git/go-git/v5/storage/filesystem"
 	"github.com/rjeczalik/notify"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -44,6 +45,7 @@ func NewGitStore(
 	client *http.Client,
 	port int32,
 	sdkVersion string,
+	reportContextValues bool,
 ) (Store, error) {
 	var distClient backendv1beta1connect.DistributionServiceClient
 	if len(apiKey) > 0 {
@@ -62,6 +64,7 @@ func NewGitStore(
 		eventsBatchSize, true,
 		port,
 		sdkVersion,
+		reportContextValues,
 	)
 }
 
@@ -71,6 +74,7 @@ func newGitStore(
 	storer storage.Storer, fs billy.Filesystem,
 	distClient backendv1beta1connect.DistributionServiceClient,
 	eventsBatchSize int, watch bool, port int32, sdkVersion string,
+	reportContextValues bool,
 ) (*gitStore, error) {
 	g := &gitStore{
 		distClient: distClient,
@@ -79,10 +83,11 @@ func newGitStore(
 			OwnerName: ownerName,
 			RepoName:  repoName,
 		},
-		apiKey:     apiKey,
-		storer:     storer,
-		fs:         fs,
-		sdkVersion: sdkVersion,
+		apiKey:              apiKey,
+		storer:              storer,
+		fs:                  fs,
+		sdkVersion:          sdkVersion,
+		reportContextValues: reportContextValues,
 	}
 	if distClient != nil {
 		// register with lekko backend
@@ -109,18 +114,19 @@ func newGitStore(
 }
 
 type gitStore struct {
-	distClient         backendv1beta1connect.DistributionServiceClient
-	store              *store
-	repoKey            *backendv1beta1.RepositoryKey
-	apiKey, sessionKey string
-	wg                 sync.WaitGroup
-	cancel             context.CancelFunc
-	eb                 *eventBatcher
-	fsChan             chan<- notify.EventInfo
-	storer             storage.Storer
-	fs                 billy.Filesystem
-	server             *sdkServer
-	sdkVersion         string
+	distClient          backendv1beta1connect.DistributionServiceClient
+	store               *store
+	repoKey             *backendv1beta1.RepositoryKey
+	apiKey, sessionKey  string
+	wg                  sync.WaitGroup
+	cancel              context.CancelFunc
+	eb                  *eventBatcher
+	fsChan              chan<- notify.EventInfo
+	storer              storage.Storer
+	fs                  billy.Filesystem
+	server              *sdkServer
+	sdkVersion          string
+	reportContextValues bool
 }
 
 func (g *gitStore) registerWithBackoff(ctx context.Context) (string, error) {
@@ -190,12 +196,13 @@ func (g *gitStore) watch(ctx context.Context, fsChan <-chan notify.EventInfo) {
 	}
 }
 
-func (g *gitStore) Evaluate(key string, namespace string, lekkoContext map[string]interface{}, dest proto.Message) (*StoredConfig, error) {
+func (g *gitStore) Evaluate(ctx context.Context, key string, namespace string, lekkoContext map[string]interface{}, dest proto.Message) (*StoredConfig, error) {
 	cfg, rp, err := g.store.evaluateType(key, namespace, lekkoContext, dest)
 	if err != nil {
 		return nil, err
 	}
 	if g.eb != nil {
+		span := trace.SpanFromContext(ctx)
 		g.eb.track(&backendv1beta1.FlagEvaluationEvent{
 			RepoKey:             g.repoKey,
 			CommitSha:           cfg.CommitSHA,
@@ -203,8 +210,9 @@ func (g *gitStore) Evaluate(key string, namespace string, lekkoContext map[strin
 			FeatureSha:          cfg.ConfigSHA,
 			NamespaceName:       namespace,
 			FeatureName:         cfg.Config.GetKey(),
-			ContextKeys:         toContextKeysProto(lekkoContext),
+			ContextKeys:         toContextKeysProto(lekkoContext, g.reportContextValues),
 			ResultPath:          toResultPathProto(rp),
+			OtelTraceId:         span.SpanContext().TraceID().String(),
 		})
 	}
 	return cfg, nil

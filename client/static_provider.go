@@ -47,7 +47,7 @@ func (p *staticProvider) Close(ctx context.Context) error {
 
 func (p *staticProvider) GetBool(ctx context.Context, key string, namespace string) (bool, error) {
 	dest := &wrapperspb.BoolValue{}
-	cfg, err := p.store.Evaluate(key, namespace, fromContext(ctx), dest)
+	cfg, err := p.store.Evaluate(ctx, key, namespace, fromContext(ctx), dest)
 	if err != nil {
 		return false, err
 	}
@@ -57,7 +57,7 @@ func (p *staticProvider) GetBool(ctx context.Context, key string, namespace stri
 
 func (p *staticProvider) GetFloat(ctx context.Context, key string, namespace string) (float64, error) {
 	dest := &wrapperspb.DoubleValue{}
-	cfg, err := p.store.Evaluate(key, namespace, fromContext(ctx), dest)
+	cfg, err := p.store.Evaluate(ctx, key, namespace, fromContext(ctx), dest)
 	if err != nil {
 		return 0, err
 	}
@@ -67,7 +67,7 @@ func (p *staticProvider) GetFloat(ctx context.Context, key string, namespace str
 
 func (p *staticProvider) GetInt(ctx context.Context, key string, namespace string) (int64, error) {
 	dest := &wrapperspb.Int64Value{}
-	cfg, err := p.store.Evaluate(key, namespace, fromContext(ctx), dest)
+	cfg, err := p.store.Evaluate(ctx, key, namespace, fromContext(ctx), dest)
 	if err != nil {
 		return 0, err
 	}
@@ -77,7 +77,7 @@ func (p *staticProvider) GetInt(ctx context.Context, key string, namespace strin
 
 func (p *staticProvider) GetJSON(ctx context.Context, key string, namespace string, result interface{}) error {
 	dest := &structpb.Value{}
-	cfg, err := p.store.Evaluate(key, namespace, fromContext(ctx), dest)
+	cfg, err := p.store.Evaluate(ctx, key, namespace, fromContext(ctx), dest)
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,7 @@ func (p *staticProvider) GetJSON(ctx context.Context, key string, namespace stri
 }
 
 func (p *staticProvider) GetProto(ctx context.Context, key string, namespace string, result protoreflect.ProtoMessage) error {
-	cfg, err := p.store.Evaluate(key, namespace, fromContext(ctx), result)
+	cfg, err := p.store.Evaluate(ctx, key, namespace, fromContext(ctx), result)
 	if err != nil {
 		return err
 	}
@@ -103,7 +103,7 @@ func (p *staticProvider) GetProto(ctx context.Context, key string, namespace str
 
 func (p *staticProvider) GetString(ctx context.Context, key string, namespace string) (string, error) {
 	dest := &wrapperspb.StringValue{}
-	cfg, err := p.store.Evaluate(key, namespace, fromContext(ctx), dest)
+	cfg, err := p.store.Evaluate(ctx, key, namespace, fromContext(ctx), dest)
 	if err != nil {
 		return "", err
 	}

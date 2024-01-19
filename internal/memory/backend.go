@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -27,6 +29,7 @@ import (
 	"github.com/bufbuild/connect-go"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
@@ -40,7 +43,7 @@ const (
 )
 
 type Store interface {
-	Evaluate(key string, namespace string, lekkoContext map[string]interface{}, dest proto.Message) (*StoredConfig, error)
+	Evaluate(ctx context.Context, key string, namespace string, lekkoContext map[string]interface{}, dest proto.Message) (*StoredConfig, error)
 	Close(ctx context.Context) error
 }
 
@@ -52,6 +55,7 @@ func NewBackendStore(
 	updateInterval time.Duration,
 	serverPort int32,
 	sdkVersion string,
+	reportContextValues bool,
 ) (Store, error) {
 	return newBackendStore(
 		ctx,
@@ -61,6 +65,7 @@ func NewBackendStore(
 		eventsBatchSize,
 		serverPort,
 		sdkVersion,
+		reportContextValues,
 	)
 }
 
@@ -72,6 +77,7 @@ func newBackendStore(
 	eventsBatchSize int,
 	serverPort int32,
 	sdkVersion string,
+	reportContextValues bool,
 ) (*backendStore, error) {
 	b := &backendStore{
 		distClient: distClient,
@@ -80,9 +86,10 @@ func newBackendStore(
 			OwnerName: ownerName,
 			RepoName:  repoName,
 		},
-		apiKey:         apiKey,
-		updateInterval: updateInterval,
-		sdkVersion:     sdkVersion,
+		apiKey:              apiKey,
+		updateInterval:      updateInterval,
+		sdkVersion:          sdkVersion,
+		reportContextValues: reportContextValues,
 	}
 	// register with lekko backend
 	sessionKey, err := b.registerWithBackoff(ctx)
@@ -104,16 +111,17 @@ func newBackendStore(
 }
 
 type backendStore struct {
-	distClient         backendv1beta1connect.DistributionServiceClient
-	store              *store
-	repoKey            *backendv1beta1.RepositoryKey
-	apiKey, sessionKey string
-	wg                 sync.WaitGroup
-	updateInterval     time.Duration
-	cancel             context.CancelFunc
-	eb                 *eventBatcher
-	server             *sdkServer
-	sdkVersion         string
+	distClient          backendv1beta1connect.DistributionServiceClient
+	store               *store
+	repoKey             *backendv1beta1.RepositoryKey
+	apiKey, sessionKey  string
+	wg                  sync.WaitGroup
+	updateInterval      time.Duration
+	cancel              context.CancelFunc
+	eb                  *eventBatcher
+	server              *sdkServer
+	sdkVersion          string
+	reportContextValues bool
 }
 
 // Close implements Store.
@@ -133,20 +141,22 @@ func (b *backendStore) Close(ctx context.Context) error {
 }
 
 // Evaluate implements Store.
-func (b *backendStore) Evaluate(key string, namespace string, lc map[string]interface{}, dest protoreflect.ProtoMessage) (*StoredConfig, error) {
+func (b *backendStore) Evaluate(ctx context.Context, key string, namespace string, lc map[string]interface{}, dest protoreflect.ProtoMessage) (*StoredConfig, error) {
 	cfg, rp, err := b.store.evaluateType(key, namespace, lc, dest)
 	if err != nil {
 		return nil, err
 	}
 	// track metrics
+	span := trace.SpanFromContext(ctx)
 	b.eb.track(&backendv1beta1.FlagEvaluationEvent{
 		RepoKey:       b.repoKey,
 		CommitSha:     cfg.CommitSHA,
 		FeatureSha:    cfg.ConfigSHA,
 		NamespaceName: namespace,
 		FeatureName:   cfg.Config.GetKey(),
-		ContextKeys:   toContextKeysProto(lc),
+		ContextKeys:   toContextKeysProto(lc, b.reportContextValues),
 		ResultPath:    toResultPathProto(rp),
+		OtelTraceId:   span.SpanContext().TraceID().String(),
 	})
 	return cfg, nil
 }
@@ -254,15 +264,63 @@ func (b *backendStore) loop(ctx context.Context) {
 	}()
 }
 
-func toContextKeysProto(lc map[string]interface{}) []*backendv1beta1.ContextKey {
+func toContextKeysProto(lc map[string]interface{}, reportContextValues bool) []*backendv1beta1.ContextKey {
 	var ret []*backendv1beta1.ContextKey
-	for k, v := range lc {
+
+	if reportContextValues {
 		ret = append(ret, &backendv1beta1.ContextKey{
-			Key:  k,
-			Type: contextKeyTypeToProto(v),
+			Key:         "otel_service_name",
+			Type:        "string",
+			StringValue: os.Getenv("OTEL_SERVICE_NAME"),
 		})
 	}
+
+	for k, v := range lc {
+		contextKey := &backendv1beta1.ContextKey{
+			Key:  k,
+			Type: contextKeyTypeToProto(v),
+		}
+		if reportContextValues {
+			contextKey.StringValue = contextValueToString(v)
+		}
+		ret = append(ret, contextKey)
+	}
 	return ret
+}
+
+func contextValueToString(v interface{}) string {
+	switch tv := v.(type) {
+	case bool:
+		return strconv.FormatBool(tv)
+	case string:
+		return tv
+	case int:
+		return strconv.FormatInt(int64(tv), 10)
+	case int8:
+		return strconv.FormatInt(int64(tv), 10)
+	case int16:
+		return strconv.FormatInt(int64(tv), 10)
+	case int32:
+		return strconv.FormatInt(int64(tv), 10)
+	case int64:
+		return strconv.FormatInt(tv, 10)
+	case uint:
+		return strconv.FormatInt(int64(tv), 10)
+	case uint16:
+		return strconv.FormatInt(int64(tv), 10)
+	case uint32:
+		return strconv.FormatInt(int64(tv), 10)
+	case uint64:
+		return strconv.FormatInt(int64(tv), 10)
+	case uint8:
+		return strconv.FormatInt(int64(tv), 10)
+	case float32:
+		return strconv.FormatFloat(float64(tv), 'G', -1, 32)
+	case float64:
+		return strconv.FormatFloat(tv, 'G', -1, 64)
+	default:
+		return fmt.Sprintf("%T", v)
+	}
 }
 
 func contextKeyTypeToProto(v interface{}) string {

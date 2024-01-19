@@ -57,6 +57,7 @@ func CachedAPIProvider(
 		cfg.getHTTPClient(),
 		cfg.updateInterval, cfg.serverPort,
 		version.SDKVersion,
+		cfg.reportContextValues,
 	)
 	if err != nil {
 		return nil, err
@@ -98,6 +99,7 @@ func CachedGitFsProvider(
 		cfg.repoKey.OwnerName, cfg.repoKey.RepoName,
 		path, cfg.getHTTPClient(), cfg.serverPort,
 		version.SDKVersion,
+		cfg.reportContextValues,
 	)
 	if err != nil {
 		return nil, err
@@ -122,7 +124,7 @@ func (cp *cachedProvider) Close(ctx context.Context) error {
 
 func (cp *cachedProvider) GetBool(ctx context.Context, key string, namespace string) (bool, error) {
 	dest := &wrapperspb.BoolValue{}
-	cfg, err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest)
+	cfg, err := cp.store.Evaluate(ctx, key, namespace, fromContext(ctx), dest)
 	if err != nil {
 		return false, err
 	}
@@ -132,7 +134,7 @@ func (cp *cachedProvider) GetBool(ctx context.Context, key string, namespace str
 
 func (cp *cachedProvider) GetFloat(ctx context.Context, key string, namespace string) (float64, error) {
 	dest := &wrapperspb.DoubleValue{}
-	cfg, err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest)
+	cfg, err := cp.store.Evaluate(ctx, key, namespace, fromContext(ctx), dest)
 	if err != nil {
 		return 0, err
 	}
@@ -142,7 +144,7 @@ func (cp *cachedProvider) GetFloat(ctx context.Context, key string, namespace st
 
 func (cp *cachedProvider) GetInt(ctx context.Context, key string, namespace string) (int64, error) {
 	dest := &wrapperspb.Int64Value{}
-	cfg, err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest)
+	cfg, err := cp.store.Evaluate(ctx, key, namespace, fromContext(ctx), dest)
 	if err != nil {
 		return 0, err
 	}
@@ -152,7 +154,7 @@ func (cp *cachedProvider) GetInt(ctx context.Context, key string, namespace stri
 
 func (cp *cachedProvider) GetJSON(ctx context.Context, key string, namespace string, result interface{}) error {
 	dest := &structpb.Value{}
-	cfg, err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest)
+	cfg, err := cp.store.Evaluate(ctx, key, namespace, fromContext(ctx), dest)
 	if err != nil {
 		return err
 	}
@@ -168,7 +170,7 @@ func (cp *cachedProvider) GetJSON(ctx context.Context, key string, namespace str
 }
 
 func (cp *cachedProvider) GetProto(ctx context.Context, key string, namespace string, result protoreflect.ProtoMessage) error {
-	cfg, err := cp.store.Evaluate(key, namespace, fromContext(ctx), result)
+	cfg, err := cp.store.Evaluate(ctx, key, namespace, fromContext(ctx), result)
 	if err != nil {
 		return err
 	}
@@ -178,7 +180,7 @@ func (cp *cachedProvider) GetProto(ctx context.Context, key string, namespace st
 
 func (cp *cachedProvider) GetString(ctx context.Context, key string, namespace string) (string, error) {
 	dest := &wrapperspb.StringValue{}
-	cfg, err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest)
+	cfg, err := cp.store.Evaluate(ctx, key, namespace, fromContext(ctx), dest)
 	if err != nil {
 		return "", err
 	}
