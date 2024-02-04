@@ -32,8 +32,9 @@ var (
 )
 
 type EvalContext struct {
-	Namespace   string
-	FeatureName string
+	Namespace                  string
+	FeatureName                string
+	ReferencedConfigToValueMap map[string]interface{}
 }
 
 // v1beta3 refers to the version of the rules protobuf type in lekko.rules.v1beta3.rules.proto
@@ -121,6 +122,8 @@ func (v1b3 *v1beta3) evaluateRule(rule *rulesv1beta3.Rule, featureCtx map[string
 		switch f := r.CallExpression.Function.(type) {
 		case *rulesv1beta3.CallExpression_Bucket_:
 			return v1b3.evaluateBucket(f.Bucket, featureCtx)
+		case *rulesv1beta3.CallExpression_EvaluateTo_:
+			return v1b3.evaluateEvaluateTo(f.EvaluateTo, featureCtx)
 		}
 	}
 	return false, errors.Errorf("unknown rule type %T", rule.Rule)

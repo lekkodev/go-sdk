@@ -117,9 +117,38 @@ func NewComplexTreeFeature() *featurev1beta1.Feature {
 		Tree: &featurev1beta1.Tree{
 			Default: NewAnyInt(12),
 			Constraints: []*featurev1beta1.Constraint{
+				genConstraint("evaluate_to(\"segments\", \"alpha\")", NewAnyInt(33)),
 				genConstraint("a == 1", NewAnyInt(38), genConstraint("x IN [\"a\", \"b\"]", NewAnyInt(108))),
 				genConstraint("a > 10", nil, genConstraint("x == \"c\"", NewAnyInt(21))),
 				genConstraint("a > 5", NewAnyInt(23)),
+			},
+		},
+	}
+}
+
+func NewDependencyTreeFeature() *featurev1beta1.Feature {
+	return &featurev1beta1.Feature{
+		Key: "dependency-tree",
+		Tree: &featurev1beta1.Tree{
+			Default: NewAnyInt(50),
+			Constraints: []*featurev1beta1.Constraint{
+				genConstraint("evaluate_to(\"segments\", \"alpha\")", NewAnyInt(10)),
+				genConstraint("a > 5", NewAnyInt(20)),
+				genConstraint("evaluate_to(\"segments\", \"beta\")", NewAnyInt(30)),
+			},
+		},
+		Metadata: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"segments": {
+					Kind: &structpb.Value_StructValue{
+						StructValue: &structpb.Struct{
+							Fields: map[string]*structpb.Value{
+								"0": structpb.NewStringValue("alpha"),
+								"2": structpb.NewStringValue("beta"),
+							},
+						},
+					},
+				},
 			},
 		},
 	}
@@ -141,6 +170,30 @@ func genConstraint(ruleStr string, value *anypb.Any, constraints ...*featurev1be
 
 func rulesMap() map[string]*rulesv1beta3.Rule {
 	ret := make(map[string]*rulesv1beta3.Rule)
+	ret["evaluate_to(\"segments\", \"alpha\")"] = &rulesv1beta3.Rule{
+		Rule: &rulesv1beta3.Rule_CallExpression{
+			CallExpression: &rulesv1beta3.CallExpression{
+				Function: &rulesv1beta3.CallExpression_EvaluateTo_{
+					EvaluateTo: &rulesv1beta3.CallExpression_EvaluateTo{
+						ConfigName:  "segments",
+						ConfigValue: "alpha",
+					},
+				},
+			},
+		},
+	}
+	ret["evaluate_to(\"segments\", \"beta\")"] = &rulesv1beta3.Rule{
+		Rule: &rulesv1beta3.Rule_CallExpression{
+			CallExpression: &rulesv1beta3.CallExpression{
+				Function: &rulesv1beta3.CallExpression_EvaluateTo_{
+					EvaluateTo: &rulesv1beta3.CallExpression_EvaluateTo{
+						ConfigName:  "segments",
+						ConfigValue: "beta",
+					},
+				},
+			},
+		},
+	}
 	ret["a == 1"] = atom("a", "==", structpb.NewNumberValue(1))
 	ret["a > 10"] = atom("a", ">", structpb.NewNumberValue(10))
 	ret["a > 5"] = atom("a", ">", structpb.NewNumberValue(5))

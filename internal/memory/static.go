@@ -52,7 +52,7 @@ func (s *staticStore) Evaluate(key string, namespace string, lekkoContext map[st
 	if !ok {
 		return errors.New("unknown key")
 	}
-	evaluableConfig := eval.NewV1Beta3(cfg, namespace)
+	evaluableConfig := eval.NewV1Beta3(cfg, namespace, nil)
 	a, _, err := evaluableConfig.Evaluate(lekkoContext)
 	if err != nil {
 		return err

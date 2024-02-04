@@ -28,10 +28,12 @@ import (
 	"github.com/lekkodev/go-sdk/pkg/eval"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var (
-	ErrConfigNotFound error = fmt.Errorf("config not found")
+	ErrConfigNotFound  error = fmt.Errorf("config not found")
+	ErrConfigsNotFound error = fmt.Errorf("configs not found for the namespace")
 )
 
 func newStore(owner, repo string) *store {
@@ -158,12 +160,36 @@ func (s *store) getCommitSha() string {
 	return ret
 }
 
-func (s *store) evaluateType(key string, namespace string, lc map[string]interface{}, dest proto.Message) (*storedConfig, eval.ResultPath, error) {
+func (s *store) evaluateType(
+	key string, namespace string, lc map[string]interface{}, dest proto.Message) (*storedConfig, eval.ResultPath, error) {
 	cfg, err := s.get(namespace, key)
 	if err != nil {
 		return nil, nil, err
 	}
-	evaluableConfig := eval.NewV1Beta3(cfg.Config, namespace)
+
+	// check metadata in cfg to see if there is a reference config needs to evaluate
+	// https://github.com/lekkodev/config-test/pull/489/files
+	// metadata = {
+	//     "segments": {
+	//         "0": "alpha",
+	//         "1": "pro",
+	//     },
+	// },
+
+	referencedConfigToValueMap := make(map[string]interface{})
+	flagsMap := cfg.Config.GetMetadata().AsMap()
+	if len(flagsMap) > 0 {
+		for flagName, _ := range flagsMap {
+			referencedDest := &wrapperspb.StringValue{}
+			_, _, err2 := s.evaluateType(flagName, namespace, lc, referencedDest)
+			if err2 != nil {
+				return nil, nil, err2
+			}
+			referencedConfigToValueMap[flagName] = referencedDest.GetValue()
+		}
+	}
+
+	evaluableConfig := eval.NewV1Beta3(cfg.Config, namespace, referencedConfigToValueMap)
 	a, rp, err := evaluableConfig.Evaluate(lc)
 	if err != nil {
 		return nil, nil, err
