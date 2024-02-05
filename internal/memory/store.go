@@ -32,8 +32,8 @@ import (
 )
 
 var (
-	ErrConfigNotFound  error = fmt.Errorf("config not found")
-	ErrConfigsNotFound error = fmt.Errorf("configs not found for the namespace")
+	ErrConfigNotFound       error = fmt.Errorf("config not found")
+	ErrCycleDependentConfig error = fmt.Errorf("cycle in config dependency")
 )
 
 func newStore(owner, repo string) *store {
@@ -182,10 +182,15 @@ func (s *store) evaluateType(
 	referencedConfigKeys := s.getReferencedConfigKeys(cfg)
 	if len(referencedConfigKeys) > 0 {
 		for configKey := range referencedConfigKeys {
+			// TODO: implement more sophisticated cycle detection in config dependency DAG
+			if configKey == key {
+				return nil, nil, ErrCycleDependentConfig
+			}
+			// TODO: support non string type
 			referencedDest := &wrapperspb.StringValue{}
-			_, _, err2 := s.evaluateType(configKey, namespace, lc, referencedDest)
-			if err2 != nil {
-				return nil, nil, err2
+			_, _, err := s.evaluateType(configKey, namespace, lc, referencedDest)
+			if err != nil {
+				return nil, nil, err
 			}
 			referencedConfigToValueMap[configKey] = referencedDest.GetValue()
 		}
