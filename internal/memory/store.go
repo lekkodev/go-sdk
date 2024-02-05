@@ -160,6 +160,17 @@ func (s *store) getCommitSha() string {
 	return ret
 }
 
+func (s *store) getDependentConfigs(cfg *storedConfig) map[string]bool {
+	dependentConfigKeys := make(map[string]bool)
+	for _, constraint := range cfg.Config.GetTree().GetConstraints() {
+		evaluateTo := constraint.GetRuleAstNew().GetCallExpression().GetEvaluateTo()
+		if evaluateTo != nil {
+			dependentConfigKeys[evaluateTo.ConfigName] = true
+		}
+	}
+	return dependentConfigKeys
+}
+
 func (s *store) evaluateType(
 	key string, namespace string, lc map[string]interface{}, dest proto.Message) (*storedConfig, eval.ResultPath, error) {
 	cfg, err := s.get(namespace, key)
@@ -167,19 +178,10 @@ func (s *store) evaluateType(
 		return nil, nil, err
 	}
 
-	// check metadata in cfg to see if there is a reference config needs to evaluate
-	// https://github.com/lekkodev/config-test/pull/489/files
-	// metadata = {
-	//     "segments": {
-	//         "0": "alpha",
-	//         "1": "pro",
-	//     },
-	// },
-
 	referencedConfigToValueMap := make(map[string]interface{})
-	flagsMap := cfg.Config.GetMetadata().AsMap()
+	flagsMap := s.getDependentConfigs(cfg)
 	if len(flagsMap) > 0 {
-		for flagName, _ := range flagsMap {
+		for flagName := range flagsMap {
 			referencedDest := &wrapperspb.StringValue{}
 			_, _, err2 := s.evaluateType(flagName, namespace, lc, referencedDest)
 			if err2 != nil {
