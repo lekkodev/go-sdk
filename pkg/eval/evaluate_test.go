@@ -134,6 +134,7 @@ func TestEvaluateFeatureComplexV1Beta3(t *testing.T) {
 
 func TestEvaluateFeatureWithDependencyV1Beta3(t *testing.T) {
 	t.Parallel()
+	dependentConfigName := "segments"
 	complexFeature := NewDependencyTreeFeature()
 	tcs := []struct {
 		context                    map[string]interface{}
@@ -143,22 +144,22 @@ func TestEvaluateFeatureWithDependencyV1Beta3(t *testing.T) {
 	}{
 		{
 			nil,
-			map[string]interface{}{"segments": "gamma"},
+			map[string]interface{}{dependentConfigName: "gamma"},
 			50, []int{},
 		},
 		{
 			map[string]interface{}{"a": 6},
-			map[string]interface{}{"segments": "beta"},
+			map[string]interface{}{dependentConfigName: "beta"},
 			20, []int{1},
 		},
 		{
 			map[string]interface{}{"a": 6},
-			map[string]interface{}{"segments": "alpha"},
+			map[string]interface{}{dependentConfigName: "alpha"},
 			10, []int{0},
 		},
 		{
 			map[string]interface{}{"a": 4},
-			map[string]interface{}{"segments": "beta"},
+			map[string]interface{}{dependentConfigName: "beta"},
 			30, []int{2},
 		},
 	}

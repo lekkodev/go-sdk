@@ -160,15 +160,15 @@ func (s *store) getCommitSha() string {
 	return ret
 }
 
-func (s *store) getDependentConfigs(cfg *storedConfig) map[string]bool {
-	dependentConfigKeys := make(map[string]bool)
+func (s *store) getReferencedConfigKeys(cfg *storedConfig) map[string]bool {
+	referencedConfigKeys := make(map[string]bool)
 	for _, constraint := range cfg.Config.GetTree().GetConstraints() {
 		evaluateTo := constraint.GetRuleAstNew().GetCallExpression().GetEvaluateTo()
 		if evaluateTo != nil {
-			dependentConfigKeys[evaluateTo.ConfigName] = true
+			referencedConfigKeys[evaluateTo.ConfigName] = true
 		}
 	}
-	return dependentConfigKeys
+	return referencedConfigKeys
 }
 
 func (s *store) evaluateType(
@@ -179,15 +179,15 @@ func (s *store) evaluateType(
 	}
 
 	referencedConfigToValueMap := make(map[string]interface{})
-	flagsMap := s.getDependentConfigs(cfg)
-	if len(flagsMap) > 0 {
-		for flagName := range flagsMap {
+	referencedConfigKeys := s.getReferencedConfigKeys(cfg)
+	if len(referencedConfigKeys) > 0 {
+		for configKey := range referencedConfigKeys {
 			referencedDest := &wrapperspb.StringValue{}
-			_, _, err2 := s.evaluateType(flagName, namespace, lc, referencedDest)
+			_, _, err2 := s.evaluateType(configKey, namespace, lc, referencedDest)
 			if err2 != nil {
 				return nil, nil, err2
 			}
-			referencedConfigToValueMap[flagName] = referencedDest.GetValue()
+			referencedConfigToValueMap[configKey] = referencedDest.GetValue()
 		}
 	}
 

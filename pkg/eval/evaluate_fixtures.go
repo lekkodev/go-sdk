@@ -137,20 +137,6 @@ func NewDependencyTreeFeature() *featurev1beta1.Feature {
 				genConstraint("evaluate_to(\"segments\", \"beta\")", NewAnyInt(30)),
 			},
 		},
-		Metadata: &structpb.Struct{
-			Fields: map[string]*structpb.Value{
-				"segments": {
-					Kind: &structpb.Value_StructValue{
-						StructValue: &structpb.Struct{
-							Fields: map[string]*structpb.Value{
-								"0": structpb.NewStringValue("alpha"),
-								"2": structpb.NewStringValue("beta"),
-							},
-						},
-					},
-				},
-			},
-		},
 	}
 }
 
