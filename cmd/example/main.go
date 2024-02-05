@@ -46,7 +46,6 @@ func main() {
 	var provider client.Provider
 	var err error
 	ctx := context.Background()
-	ctx = client.Merge(ctx, map[string]interface{}{"user_id": "u_1"})
 	provider, err = getProvider(ctx, key, mode, path, owner, repo, url, port, allowHTTP)
 	if err != nil {
 		log.Fatalf("error when starting in %s mode: %v\n", mode, err)
