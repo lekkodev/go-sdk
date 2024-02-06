@@ -5,8 +5,8 @@ buf.build/gen/go/lekkodev/cli/protocolbuffers/go v1.32.0-20240202195728-0718505a
 buf.build/gen/go/lekkodev/sdk/bufbuild/connect-go v1.10.0-20230810202034-1c821065b9a0.1 h1:J0Bw6bd6GUnWpGp1c2rbTlHg8Ne3G2PKYa3vTxp6SP0=
 buf.build/gen/go/lekkodev/sdk/bufbuild/connect-go v1.10.0-20230810202034-1c821065b9a0.1/go.mod h1:GOhwtQN3rKKGVXxfXwhluFsjltgDTTJsEnIrrzjlUIk=
 buf.build/gen/go/lekkodev/sdk/protocolbuffers/go v1.32.0-20230419180142-0694c10ef23c.1/go.mod h1:ggCoYXofBw/AXklHwuCrDgGRfcKCc/mnna2/yFMpR34=
-buf.build/gen/go/lekkodev/sdk/protocolbuffers/go v1.32.0-20230810202034-1c821065b9a0.1 h1:96XyepbNRieE4Do4Y7Im7E40avRxJR6any7lPV96OnM=
-buf.build/gen/go/lekkodev/sdk/protocolbuffers/go v1.32.0-20230810202034-1c821065b9a0.1/go.mod h1:ggCoYXofBw/AXklHwuCrDgGRfcKCc/mnna2/yFMpR34=
+buf.build/gen/go/lekkodev/sdk/protocolbuffers/go v1.32.0-20231002202658-a566f0ddb92f.1 h1:Iyy/q37028Pm5+0GtR2MGnuHhib5MeLKIz2tnND9TJo=
+buf.build/gen/go/lekkodev/sdk/protocolbuffers/go v1.32.0-20231002202658-a566f0ddb92f.1/go.mod h1:ggCoYXofBw/AXklHwuCrDgGRfcKCc/mnna2/yFMpR34=
 dario.cat/mergo v1.0.0 h1:AGCNq9Evsj31mOgNPcLyXc+4PNABt905YmuqPYYpBWk=
 dario.cat/mergo v1.0.0/go.mod h1:uNxQE+84aUszobStD9th8a29P2fMDhsBdgRYvZOxGmk=
 github.com/Microsoft/go-winio v0.5.2/go.mod h1:WpS1mjBmmwHBEWmogvA2mj8546UReBk4v8QkMxJ6pZY=
