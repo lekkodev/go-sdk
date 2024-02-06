@@ -160,17 +160,6 @@ func (s *store) getCommitSha() string {
 	return ret
 }
 
-func (s *store) getReferencedConfigKeys(cfg *storedConfig) map[string]bool {
-	referencedConfigKeys := make(map[string]bool)
-	for _, constraint := range cfg.Config.GetTree().GetConstraints() {
-		evaluateTo := constraint.GetRuleAstNew().GetCallExpression().GetEvaluateTo()
-		if evaluateTo != nil {
-			referencedConfigKeys[evaluateTo.ConfigName] = true
-		}
-	}
-	return referencedConfigKeys
-}
-
 func (s *store) evaluateType(
 	key string, namespace string, lc map[string]interface{}, dest proto.Message) (*storedConfig, eval.ResultPath, error) {
 	cfg, err := s.get(namespace, key)
@@ -178,22 +167,9 @@ func (s *store) evaluateType(
 		return nil, nil, err
 	}
 
-	referencedConfigToValueMap := make(map[string]interface{})
-	referencedConfigKeys := s.getReferencedConfigKeys(cfg)
-	if len(referencedConfigKeys) > 0 {
-		for configKey := range referencedConfigKeys {
-			// TODO: implement more sophisticated cycle detection in config dependency DAG
-			if configKey == key {
-				return nil, nil, ErrCycleDependentConfig
-			}
-			// TODO: support non string type
-			referencedDest := &wrapperspb.StringValue{}
-			_, _, err := s.evaluateType(configKey, namespace, lc, referencedDest)
-			if err != nil {
-				return nil, nil, err
-			}
-			referencedConfigToValueMap[configKey] = referencedDest.GetValue()
-		}
+	referencedConfigToValueMap, err := s.maybeEvaluateReferencedConfigs(cfg, key, namespace, lc)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	evaluableConfig := eval.NewV1Beta3(cfg.Config, namespace, referencedConfigToValueMap)
@@ -205,6 +181,40 @@ func (s *store) evaluateType(
 		return nil, nil, errors.Wrapf(err, "invalid type, expecting %T", dest)
 	}
 	return cfg, rp, nil
+}
+
+func (s *store) maybeEvaluateReferencedConfigs(
+	cfg *storedConfig, key string, namespace string, lc map[string]interface{}) (map[string]interface{}, error) {
+	referencedConfigToValueMap := make(map[string]interface{})
+	referencedConfigKeys := s.getReferencedConfigKeys(cfg)
+	if len(referencedConfigKeys) > 0 {
+		for configKey := range referencedConfigKeys {
+			// TODO: implement more sophisticated cycle detection in config dependency DAG
+			if configKey == key {
+				return nil, ErrCycleDependentConfig
+			}
+
+			// TODO: support non string type
+			referencedDest := &wrapperspb.StringValue{}
+			_, _, err := s.evaluateType(configKey, namespace, lc, referencedDest)
+			if err != nil {
+				return nil, err
+			}
+			referencedConfigToValueMap[configKey] = referencedDest.GetValue()
+		}
+	}
+	return referencedConfigToValueMap, nil
+}
+
+func (s *store) getReferencedConfigKeys(cfg *storedConfig) map[string]bool {
+	referencedConfigKeys := make(map[string]bool)
+	for _, constraint := range cfg.Config.GetTree().GetConstraints() {
+		evaluateTo := constraint.GetRuleAstNew().GetCallExpression().GetEvaluateTo()
+		if evaluateTo != nil {
+			referencedConfigKeys[evaluateTo.ConfigName] = true
+		}
+	}
+	return referencedConfigKeys
 }
 
 func (s *store) listContents() (*serverv1beta1.ListContentsResponse, error) {
