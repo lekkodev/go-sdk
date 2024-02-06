@@ -24,13 +24,13 @@ import (
 )
 
 func (v1b3 *v1beta3) evaluateEvaluateTo(
-	bucketF *rulesv1beta3.CallExpression_EvaluateTo,
+	evaluateToF *rulesv1beta3.CallExpression_EvaluateTo,
 	featureCtx map[string]interface{},
 ) (bool, error) {
-	expectedValue := bucketF.ConfigValue
-	actualValue, present := v1b3.evalContext.ReferencedConfigToValueMap[bucketF.ConfigName]
+	expectedValue := evaluateToF.ConfigValue
+	actualValue, present := v1b3.evalContext.ReferencedConfigToValueMap[evaluateToF.ConfigName]
 	if !present {
-		return false, errors.Errorf("config name %s for evaluate_to not found", bucketF.ConfigName)
+		return false, errors.Errorf("config name %s for evaluate_to not found", evaluateToF.ConfigName)
 	}
 	return expectedValue == actualValue, nil
 }
