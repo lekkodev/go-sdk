@@ -77,7 +77,7 @@ func TestEvaluateFeatureBoolV1Beta3(t *testing.T) {
 	}
 
 	for i, tc := range tcs {
-		val, path, err := NewV1Beta3(tc.feature, "namespace").Evaluate(tc.context)
+		val, path, err := NewV1Beta3(tc.feature, "namespace", nil).Evaluate(tc.context)
 		if tc.testErr != nil {
 			require.Error(t, err)
 		} else {
@@ -123,7 +123,49 @@ func TestEvaluateFeatureComplexV1Beta3(t *testing.T) {
 	}
 
 	for i, tc := range tcs {
-		val, path, err := NewV1Beta3(complexFeature, "namespace").Evaluate(tc.context)
+		val, path, err := NewV1Beta3(complexFeature, "namespace", nil).Evaluate(tc.context)
+		require.NoError(t, err)
+		var res wrapperspb.Int64Value
+		require.NoError(t, val.UnmarshalTo(&res))
+		require.Equal(t, tc.testVal, res.Value, "failed on test %d for %s", i, complexFeature.Key)
+		require.EqualValues(t, tc.testPath, path, "expected equal paths")
+	}
+}
+
+func TestEvaluateFeatureWithDependencyV1Beta3(t *testing.T) {
+	t.Parallel()
+	dependentConfigName := "segments"
+	complexFeature := NewDependencyTreeFeature()
+	tcs := []struct {
+		context                    map[string]interface{}
+		referencedConfigToValueMap map[string]interface{}
+		testVal                    int64
+		testPath                   []int
+	}{
+		{
+			nil,
+			map[string]interface{}{dependentConfigName: "gamma"},
+			50, []int{},
+		},
+		{
+			map[string]interface{}{"a": 6},
+			map[string]interface{}{dependentConfigName: "beta"},
+			20, []int{1},
+		},
+		{
+			map[string]interface{}{"a": 6},
+			map[string]interface{}{dependentConfigName: "alpha"},
+			10, []int{0},
+		},
+		{
+			map[string]interface{}{"a": 4},
+			map[string]interface{}{dependentConfigName: "beta"},
+			30, []int{2},
+		},
+	}
+
+	for i, tc := range tcs {
+		val, path, err := NewV1Beta3(complexFeature, "namespace", tc.referencedConfigToValueMap).Evaluate(tc.context)
 		require.NoError(t, err)
 		var res wrapperspb.Int64Value
 		require.NoError(t, val.UnmarshalTo(&res))

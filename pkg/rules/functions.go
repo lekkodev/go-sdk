@@ -23,6 +23,18 @@ import (
 	"github.com/pkg/errors"
 )
 
+func (v1b3 *v1beta3) evaluateEvaluateTo(
+	evaluateToF *rulesv1beta3.CallExpression_EvaluateTo,
+	featureCtx map[string]interface{},
+) (bool, error) {
+	expectedValue := evaluateToF.ConfigValue
+	actualValue, present := v1b3.evalContext.ReferencedConfigToValueMap[evaluateToF.ConfigName]
+	if !present {
+		return false, errors.Errorf("config name %s for evaluate_to not found", evaluateToF.ConfigName)
+	}
+	return expectedValue == actualValue, nil
+}
+
 // If the hashed feature value % 100 <= threshold, it fits in the "bucket".
 // In reality, we internally store the threshold as an integer in [0,100000]
 // to account for up to 3 decimal places.
