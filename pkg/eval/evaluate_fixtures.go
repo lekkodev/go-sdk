@@ -117,7 +117,6 @@ func NewComplexTreeFeature() *featurev1beta1.Feature {
 		Tree: &featurev1beta1.Tree{
 			Default: NewAnyInt(12),
 			Constraints: []*featurev1beta1.Constraint{
-				genConstraint("evaluate_to(\"segments\", \"alpha\")", NewAnyInt(33)),
 				genConstraint("a == 1", NewAnyInt(38), genConstraint("x IN [\"a\", \"b\"]", NewAnyInt(108))),
 				genConstraint("a > 10", nil, genConstraint("x == \"c\"", NewAnyInt(21))),
 				genConstraint("a > 5", NewAnyInt(23)),

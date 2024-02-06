@@ -59,21 +59,6 @@ func (v1b3 *v1beta3) Evaluate(lekkoCtx map[string]interface{}) (*anypb.Any, Resu
 	return v1b3.evaluate(lekkoCtx)
 }
 
-func (v1b3 *v1beta3) getDependentConfigs() (map[string]bool, error) {
-	dependentConfigKeys := make(map[string]bool)
-	for _, constraint := range v1b3.GetTree().GetConstraints() {
-		ruleV3 := constraint.GetRuleAstNew()
-		switch r := ruleV3.Rule.(type) {
-		case *rulesv1beta3.Rule_CallExpression:
-			switch f := r.CallExpression.Function.(type) {
-			case *rulesv1beta3.CallExpression_EvaluateTo_:
-				dependentConfigKeys[f.EvaluateTo.ConfigName] = true
-			}
-		}
-	}
-	return dependentConfigKeys, nil
-}
-
 func (v1b3 *v1beta3) evaluate(context map[string]interface{}) (*anypb.Any, []int, error) {
 	for i, constraint := range v1b3.GetTree().GetConstraints() {
 		childVal, childPasses, childPath, err := v1b3.traverse(constraint, context)
