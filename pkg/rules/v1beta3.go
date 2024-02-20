@@ -34,7 +34,7 @@ var (
 type EvalContext struct {
 	Namespace                  string
 	FeatureName                string
-	ReferencedConfigToValueMap map[string]interface{}
+	ReferencedConfigToValueMap map[string]*structpb.Value
 }
 
 // v1beta3 refers to the version of the rules protobuf type in lekko.rules.v1beta3.rules.proto

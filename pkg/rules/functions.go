@@ -32,7 +32,7 @@ func (v1b3 *v1beta3) evaluateEvaluateTo(
 	if !present {
 		return false, errors.Errorf("config name %s for evaluate_to not found", evaluateToF.ConfigName)
 	}
-	return expectedValue == actualValue, nil
+	return expectedValue.AsInterface() == actualValue.AsInterface(), nil
 }
 
 // If the hashed feature value % 100 <= threshold, it fits in the "bucket".

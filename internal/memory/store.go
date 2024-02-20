@@ -28,6 +28,7 @@ import (
 	"github.com/lekkodev/go-sdk/pkg/eval"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -184,8 +185,8 @@ func (s *store) evaluateType(
 }
 
 func (s *store) maybeEvaluateReferencedConfigs(
-	cfg *storedConfig, key string, namespace string, lc map[string]interface{}) (map[string]interface{}, error) {
-	referencedConfigToValueMap := make(map[string]interface{})
+	cfg *storedConfig, key string, namespace string, lc map[string]interface{}) (map[string]*structpb.Value, error) {
+	referencedConfigToValueMap := make(map[string]*structpb.Value)
 	referencedConfigKeys := s.getReferencedConfigKeys(cfg)
 	if len(referencedConfigKeys) > 0 {
 		for configKey := range referencedConfigKeys {
@@ -200,7 +201,7 @@ func (s *store) maybeEvaluateReferencedConfigs(
 			if err != nil {
 				return nil, err
 			}
-			referencedConfigToValueMap[configKey] = referencedDest.GetValue()
+			referencedConfigToValueMap[configKey] = structpb.NewStringValue(referencedDest.Value)
 		}
 	}
 	return referencedConfigToValueMap, nil

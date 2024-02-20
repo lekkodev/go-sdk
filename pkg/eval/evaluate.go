@@ -18,6 +18,7 @@ package eval
 
 import (
 	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	featurev1beta1 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/feature/v1beta1"
 	rulesv1beta3 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/rules/v1beta3"
@@ -43,11 +44,11 @@ type ResultPath []int
 type v1beta3 struct {
 	*featurev1beta1.Feature
 	namespace                  string
-	referencedConfigToValueMap map[string]interface{}
+	referencedConfigToValueMap map[string]*structpb.Value
 }
 
 // evaluate constrcutor needs a getter to Config getConfig(key string)
-func NewV1Beta3(f *featurev1beta1.Feature, namespace string, referencedConfigToValueMap map[string]interface{}) EvaluableConfig {
+func NewV1Beta3(f *featurev1beta1.Feature, namespace string, referencedConfigToValueMap map[string]*structpb.Value) EvaluableConfig {
 	return &v1beta3{f, namespace, referencedConfigToValueMap}
 }
 
