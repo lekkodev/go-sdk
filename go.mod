@@ -35,7 +35,7 @@ require (
 	buf.build/gen/go/lekkodev/sdk/bufbuild/connect-go v1.10.0-20230810202034-1c821065b9a0.1
 	buf.build/gen/go/lekkodev/sdk/protocolbuffers/go v1.32.0-20230810202034-1c821065b9a0.1
 	github.com/OneOfOne/xxhash v1.2.8
-	github.com/cenkalti/backoff/v4 v4.2.0
+	github.com/cenkalti/backoff/v4 v4.2.1
 	github.com/go-git/go-billy/v5 v5.5.0
 	github.com/go-git/go-git/v5 v5.11.0
 	github.com/pkg/errors v0.9.1
