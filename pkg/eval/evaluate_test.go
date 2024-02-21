@@ -19,6 +19,7 @@ import (
 
 	featurev1beta1 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/feature/v1beta1"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -138,28 +139,28 @@ func TestEvaluateFeatureWithDependencyV1Beta3(t *testing.T) {
 	complexFeature := NewDependencyTreeFeature()
 	tcs := []struct {
 		context                    map[string]interface{}
-		referencedConfigToValueMap map[string]interface{}
+		referencedConfigToValueMap map[string]*structpb.Value
 		testVal                    int64
 		testPath                   []int
 	}{
 		{
 			nil,
-			map[string]interface{}{dependentConfigName: "gamma"},
+			map[string]*structpb.Value{dependentConfigName: newValue("gamma")},
 			50, []int{},
 		},
 		{
 			map[string]interface{}{"a": 6},
-			map[string]interface{}{dependentConfigName: "beta"},
+			map[string]*structpb.Value{dependentConfigName: newValue("beta")},
 			20, []int{1},
 		},
 		{
 			map[string]interface{}{"a": 6},
-			map[string]interface{}{dependentConfigName: "alpha"},
+			map[string]*structpb.Value{dependentConfigName: newValue("alpha")},
 			10, []int{0},
 		},
 		{
 			map[string]interface{}{"a": 4},
-			map[string]interface{}{dependentConfigName: "beta"},
+			map[string]*structpb.Value{dependentConfigName: newValue("beta")},
 			30, []int{2},
 		},
 	}

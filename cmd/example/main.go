@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"log"
 	"time"
@@ -29,6 +30,7 @@ func main() {
 	var port int
 	var sleep time.Duration
 	var allowHTTP bool
+	var ctxJSON string
 	flag.StringVar(&key, "lekko-apikey", "", "API key for lekko given to your organization")
 	flag.StringVar(&mode, "mode", "api", "Mode to start the sdk in (api, cached, git, gitlocal)")
 	flag.StringVar(&namespace, "namespace", "default", "namespace to request the config from")
@@ -41,6 +43,7 @@ func main() {
 	flag.DurationVar(&sleep, "sleep", 0, "optional sleep duration to invoke web server")
 	flag.StringVar(&url, "url", "", "optional URL to configure the provider")
 	flag.BoolVar(&allowHTTP, "allow-http", false, "whether or not to allow http/2 requests")
+	flag.StringVar(&ctxJSON, "ctx", "", "config evaluation context, as JSON")
 	flag.Parse()
 
 	var provider client.Provider
@@ -55,6 +58,14 @@ func main() {
 	defer func() {
 		_ = closeF(context.Background())
 	}()
+
+	var ctxMap map[string]any
+	err = json.Unmarshal([]byte(ctxJSON), &ctxMap)
+	if err != nil {
+		log.Fatalf("error parsing context: %v", ctxJSON)
+	}
+	ctx = client.Merge(ctx, ctxMap)
+
 	var result any
 	switch cfgType {
 	case "string":

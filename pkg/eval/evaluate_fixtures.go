@@ -161,7 +161,7 @@ func rulesMap() map[string]*rulesv1beta3.Rule {
 				Function: &rulesv1beta3.CallExpression_EvaluateTo_{
 					EvaluateTo: &rulesv1beta3.CallExpression_EvaluateTo{
 						ConfigName:  "segments",
-						ConfigValue: "alpha",
+						ConfigValue: newValue("alpha"),
 					},
 				},
 			},
@@ -173,7 +173,7 @@ func rulesMap() map[string]*rulesv1beta3.Rule {
 				Function: &rulesv1beta3.CallExpression_EvaluateTo_{
 					EvaluateTo: &rulesv1beta3.CallExpression_EvaluateTo{
 						ConfigName:  "segments",
-						ConfigValue: "beta",
+						ConfigValue: newValue("beta"),
 					},
 				},
 			},
