@@ -31,9 +31,9 @@ require (
 
 require (
 	buf.build/gen/go/lekkodev/cli/bufbuild/connect-go v1.10.0-20240206020255-9524ca471ba2.1
-	buf.build/gen/go/lekkodev/cli/protocolbuffers/go v1.32.0-20240206020255-9524ca471ba2.1
+	buf.build/gen/go/lekkodev/cli/protocolbuffers/go v1.33.0-20240308232356-cf7cd50461b8.1
 	buf.build/gen/go/lekkodev/sdk/bufbuild/connect-go v1.10.0-20230810202034-1c821065b9a0.1
-	buf.build/gen/go/lekkodev/sdk/protocolbuffers/go v1.32.0-20230810202034-1c821065b9a0.1
+	buf.build/gen/go/lekkodev/sdk/protocolbuffers/go v1.33.0-20230810202034-1c821065b9a0.1
 	github.com/OneOfOne/xxhash v1.2.8
 	github.com/cenkalti/backoff/v4 v4.2.0
 	github.com/go-git/go-billy/v5 v5.5.0
@@ -42,6 +42,6 @@ require (
 	github.com/rjeczalik/notify v0.9.3
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/net v0.19.0
-	google.golang.org/protobuf v1.32.0
+	google.golang.org/protobuf v1.33.0
 	gopkg.in/yaml.v3 v3.0.1
 )
