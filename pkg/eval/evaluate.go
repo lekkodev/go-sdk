@@ -73,7 +73,7 @@ func (v1b3 *v1beta3) evaluate(context map[string]interface{}) (*anypb.Any, []int
 			break
 		}
 	}
-	return v1b3.GetTree().Default, []int{}, nil
+	return getAny(v1b3.Tree.Default, v1b3.Tree.DefaultNew), []int{}, nil
 }
 
 func (v1b3 *v1beta3) traverse(constraint *featurev1beta1.Constraint, lekkoCtx map[string]interface{}) (*anypb.Any, bool, []int, error) {
@@ -86,7 +86,7 @@ func (v1b3 *v1beta3) traverse(constraint *featurev1beta1.Constraint, lekkoCtx ma
 		return nil, passes, []int{}, nil
 	}
 	// rule passed
-	retVal := constraint.Value // may be null
+	retVal := getAny(constraint.Value, constraint.ValueNew)
 	for i, child := range constraint.GetConstraints() {
 		childVal, childPasses, childPath, err := v1b3.traverse(child, lekkoCtx)
 		if err != nil {
@@ -113,4 +113,14 @@ func (v1b3 *v1beta3) evaluateRule(ruleV3 *rulesv1beta3.Rule, lekkoCtx map[string
 		return false, errors.Wrap(err, "evaluating rule v3")
 	}
 	return passes, nil
+}
+
+func getAny(value *anypb.Any, valueNew *featurev1beta1.Any) *anypb.Any {
+	if valueNew != nil {
+		return &anypb.Any{
+			TypeUrl: valueNew.TypeUrl,
+			Value:   valueNew.Value,
+		}
+	}
+	return value
 }
