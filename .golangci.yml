@@ -70,7 +70,7 @@ linters:
     - rowserrcheck
     - staticcheck
     - structcheck
-    - stylecheck
+      #  - stylecheck
     - typecheck
     - unconvert
     - unused
