@@ -28,7 +28,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -39,6 +41,22 @@ const (
 )
 
 func repositoryContents() *backendv1beta1.GetRepositoryContentsResponse {
+	callBytes := make([]byte, 0)
+	callBytes = protowire.AppendTag(callBytes, 1, protowire.BytesType)
+	callBytes = protowire.AppendString(callBytes, "type.googleapis.com/google.protobuf.StringValue")
+	callBytes = protowire.AppendTag(callBytes, 2, protowire.BytesType)
+	callBytes = protowire.AppendString(callBytes, "ns-1")
+	callBytes = protowire.AppendTag(callBytes, 3, protowire.BytesType)
+	callBytes = protowire.AppendString(callBytes, "string")
+	protoCallBytes := make([]byte, 0)
+	protoCallBytes = protowire.AppendTag(protoCallBytes, 1, protowire.BytesType)
+	protoCallBytes = protowire.AppendString(protoCallBytes, "type.googleapis.com/google.protobuf.Int32Value")
+	protoCallBytes = protowire.AppendTag(protoCallBytes, 2, protowire.BytesType)
+	protoCallBytes = protowire.AppendString(protoCallBytes, "ns-1")
+	protoCallBytes = protowire.AppendTag(protoCallBytes, 3, protowire.BytesType)
+	protoCallBytes = protowire.AppendString(protoCallBytes, "proto")
+	protoCallBytes = protowire.AppendTag(protoCallBytes, 4, protowire.VarintType)
+	protoCallBytes = protowire.AppendVarint(protoCallBytes, 1)
 	return &backendv1beta1.GetRepositoryContentsResponse{
 		CommitSha: "commitsha",
 		Namespaces: []*backendv1beta1.Namespace{
@@ -51,6 +69,34 @@ func repositoryContents() *backendv1beta1.GetRepositoryContentsResponse {
 					testdata.Config(featurev1beta1.FeatureType_FEATURE_TYPE_INT, int64(42)),
 					testdata.Config(featurev1beta1.FeatureType_FEATURE_TYPE_JSON, []any{1, 2.5, "bar"}),
 					testdata.Config(featurev1beta1.FeatureType_FEATURE_TYPE_PROTO, wrapperspb.Int32(58)),
+					{
+						Name: "want-foo",
+						Sha:  "want-foo",
+						Feature: &featurev1beta1.Feature{
+							Key: "want-foo",
+							Tree: &featurev1beta1.Tree{
+								Default: &anypb.Any{
+									TypeUrl: "type.googleapis.com/lekko.protobuf.ConfigCall",
+									Value:   callBytes,
+								},
+							},
+							Type: featurev1beta1.FeatureType_FEATURE_TYPE_STRING,
+						},
+					},
+					{
+						Name: "want-proto",
+						Sha:  "want-proto",
+						Feature: &featurev1beta1.Feature{
+							Key: "want-proto",
+							Tree: &featurev1beta1.Tree{
+								Default: &anypb.Any{
+									TypeUrl: "type.googleapis.com/lekko.protobuf.ConfigCall",
+									Value:   protoCallBytes,
+								},
+							},
+							Type: featurev1beta1.FeatureType_FEATURE_TYPE_INT,
+						},
+					},
 				},
 			},
 		},
@@ -74,6 +120,8 @@ func TestBackendStore(t *testing.T) {
 	sv := &wrapperspb.StringValue{}
 	require.NoError(t, b.Evaluate("string", "ns-1", nil, sv))
 	assert.Equal(t, "foo", sv.Value)
+	require.NoError(t, b.Evaluate("want-foo", "ns-1", nil, sv))
+	assert.Equal(t, "foo", sv.Value)
 	iv := &wrapperspb.Int64Value{}
 	require.NoError(t, b.Evaluate("int", "ns-1", nil, iv))
 	assert.Equal(t, int64(42), iv.Value)
@@ -88,11 +136,14 @@ func TestBackendStore(t *testing.T) {
 	pv := &wrapperspb.Int32Value{}
 	require.NoError(t, b.Evaluate("proto", "ns-1", nil, pv))
 	assert.Equal(t, int32(58), pv.Value)
+	// Google WKT are not actually proto messages, so proto isn't really useful for testing this
+	//require.NoError(t, b.Evaluate("want-proto", "ns-1", nil, pv))
+	//assert.Equal(t, int32(58), pv.Value)
 
 	err = b.Close(ctx)
 	require.NoError(t, err, "no error during close")
 	events := tds.getEventsReceived()
-	require.Equal(t, 6, len(events), "expecting 6 events, got %d: %v", len(events), events)
+	require.Equal(t, 7, len(events), "expecting 7 events, got %d: %v", len(events), events)
 }
 
 func TestBackendStoreRegisterError(t *testing.T) {

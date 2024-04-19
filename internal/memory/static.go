@@ -47,7 +47,7 @@ type staticStore struct {
 
 func (s *staticStore) Evaluate(key string, namespace string, lekkoContext map[string]interface{}, dest proto.Message) error {
 	var typeUrl string
-	var targetFieldNumber uint32
+	var targetFieldNumber uint64
 	targetFieldNumber = 0
 	for { // TODO - stop loops (especially for server side eval..
 		ns, ok := s.features[namespace]
@@ -79,7 +79,7 @@ func (s *staticStore) Evaluate(key string, namespace string, lekkoContext map[st
 				case 3:
 					key, n = protowire.ConsumeString(b)
 				case 4:
-					targetFieldNumber, n = protowire.ConsumeFixed32(b)
+					targetFieldNumber, n = protowire.ConsumeVarint(b)
 				default:
 					n = protowire.ConsumeFieldValue(fid, wireType, b)
 				}
@@ -101,7 +101,7 @@ func (s *staticStore) Evaluate(key string, namespace string, lekkoContext map[st
 					if n < 0 {
 						return protowire.ParseError(n)
 					}
-					if targetFieldNumber == uint32(fid) {
+					if targetFieldNumber == uint64(fid) {
 						var value []byte
 						value = protowire.AppendTag(value, 1, protowire.BytesType)
 						value = protowire.AppendBytes(value, b[:n])
