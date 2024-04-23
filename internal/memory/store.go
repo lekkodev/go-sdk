@@ -27,7 +27,9 @@ import (
 	serverv1beta1 "buf.build/gen/go/lekkodev/sdk/protocolbuffers/go/lekko/server/v1beta1"
 	"github.com/lekkodev/go-sdk/pkg/eval"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -163,25 +165,85 @@ func (s *store) getCommitSha() string {
 
 func (s *store) evaluateType(
 	key string, namespace string, lc map[string]interface{}, dest proto.Message) (*storedConfig, eval.ResultPath, error) {
-	cfg, err := s.get(namespace, key)
-	if err != nil {
-		return nil, nil, err
-	}
+	var typeUrl string
+	var targetFieldNumber uint64
+	targetFieldNumber = 0
+	for { //TODO - stop loops (especially for server side eval..
+		cfg, err := s.get(namespace, key)
+		if err != nil {
+			return nil, nil, err
+		}
 
-	referencedConfigToValueMap, err := s.maybeEvaluateReferencedConfigs(cfg, key, namespace, lc)
-	if err != nil {
-		return nil, nil, err
-	}
+		referencedConfigToValueMap, err := s.maybeEvaluateReferencedConfigs(cfg, key, namespace, lc)
+		if err != nil {
+			return nil, nil, err
+		}
 
-	evaluableConfig := eval.NewV1Beta3(cfg.Config, namespace, referencedConfigToValueMap)
-	a, rp, err := evaluableConfig.Evaluate(lc)
-	if err != nil {
-		return nil, nil, err
+		evaluableConfig := eval.NewV1Beta3(cfg.Config, namespace, referencedConfigToValueMap)
+		a, rp, err := evaluableConfig.Evaluate(lc)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if a.TypeUrl == "type.googleapis.com/lekko.protobuf.ConfigCall" {
+			b := a.Value
+			for len(b) > 0 {
+				fid, wireType, n := protowire.ConsumeTag(b)
+				if n < 0 {
+					return nil, nil, protowire.ParseError(n)
+				}
+				b = b[n:]
+				switch fid {
+				case 1:
+					typeUrl, n = protowire.ConsumeString(b)
+				case 2:
+					namespace, n = protowire.ConsumeString(b)
+				case 3:
+					key, n = protowire.ConsumeString(b)
+				case 4:
+					targetFieldNumber, n = protowire.ConsumeVarint(b)
+				default:
+					n = protowire.ConsumeFieldValue(fid, wireType, b)
+				}
+				if n < 0 {
+					return nil, nil, protowire.ParseError(n)
+				}
+				b = b[n:]
+			}
+		} else {
+			if targetFieldNumber > 0 {
+				b := a.Value
+				for len(b) > 0 {
+					fid, wireType, n := protowire.ConsumeTag(b)
+					if n < 0 {
+						return nil, nil, protowire.ParseError(n)
+					}
+					b = b[n:]
+					n = protowire.ConsumeFieldValue(fid, wireType, b)
+					if n < 0 {
+						return nil, nil, protowire.ParseError(n)
+					}
+					if targetFieldNumber == uint64(fid) {
+						var value []byte
+						value = protowire.AppendTag(value, 1, protowire.BytesType)
+						value = protowire.AppendBytes(value, b[:n])
+						a = &anypb.Any{
+							TypeUrl: typeUrl,
+							Value:   value,
+						}
+						break // TODO default values and do we want to support deeper nesting?
+					} else {
+						b = b[n:]
+					}
+				}
+			}
+
+			if err := a.UnmarshalTo(dest); err != nil {
+				return nil, nil, errors.Wrapf(err, "invalid type, expecting %T", dest)
+			}
+			return cfg, rp, nil
+		}
 	}
-	if err := a.UnmarshalTo(dest); err != nil {
-		return nil, nil, errors.Wrapf(err, "invalid type, expecting %T", dest)
-	}
-	return cfg, rp, nil
 }
 
 func (s *store) maybeEvaluateReferencedConfigs(
