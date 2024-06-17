@@ -27,25 +27,25 @@ The following is an example of a lekko file under the lekko directory specified 
 package lekkoexample
 
 import (
-  "strings"
+    "strings"
 )
 
 // Whether to enable beta features
 func getEnableBeta(segment string) bool {
-  if strings.HasPrefix(segment, "enterprise") {
-    return true
-  }
-  return false
+    if strings.HasPrefix(segment, "enterprise") {
+        return true
+    }
+    return false
 }
 
 // Level of general log output
 func getLogLevel(env string) string {
-  if env == "production" {
-    return "info"
-  } else if env == "test" {
-    return "trace"
-  }
-  return "debug"
+    if env == "production" {
+        return "info"
+    } else if env == "test" {
+        return "trace"
+    }
+    return "debug"
 }
 ```
 
@@ -90,22 +90,22 @@ To call your lekkos, you'll use the generated SDK client code (in `internal/lekk
 package main
 
 import (
-	"context"
-	"fmt"
+    "context"
+    "fmt"
 
-	"github.com/acme-corp/my-go-project/internal/lekko"
+    "github.com/acme-corp/my-go-project/internal/lekko"
 )
 
 func main() {
-  // Initialize the Lekko SDK client. This connects to Lekko and sets up periodic refreshing of lekkos and evaluation event handling.
-  client := lekko.NewLekkoClient(context.Background())
+    // Initialize the Lekko SDK client. This connects to Lekko and sets up periodic refreshing of lekkos and evaluation event handling.
+    client := lekko.NewLekkoClient(context.Background())
 
-  // Call a lekko via the initialized client. Note that the package `lekkoexample` is "transformed" to the `Example` field on the generated client.
-  // We pass the app's env as a "context variable" for evaluation (which the log-level lekko expects, as defined above)
-  appEnv := env.GetEnvOrDefault("APP_ENV", "development")
-  logLevel := client.Example.GetLogLevel(appEnv)
+    // Call a lekko via the initialized client. Note that the package `lekkoexample` is "transformed" to the `Example` field on the generated client.
+    // We pass the app's env as a "context variable" for evaluation (which the log-level lekko expects, as defined above)
+    appEnv := env.GetEnvOrDefault("APP_ENV", "development")
+    logLevel := client.Example.GetLogLevel(appEnv)
 
-  fmt.Printf("The log level is %s", logLevel)
+    fmt.Printf("The log level is %s", logLevel)
 }
 ```
 
@@ -130,6 +130,6 @@ Note that even if the environment variables are missing or malformed, your appli
 
 Lekko's tools are designed with safety and developer experience in mind.
 
-As you can see in the above examples, initializing the Lekko SDK client and calling lekkos does not require any error handling. This is because there is always a safe default to fall back to - the original lekko code which is included at build time as a **static fallback**.
+As you can see in the above examples, initializing the Lekko SDK client and calling lekkos does not require any error handling. This is because there is always a safe default to fall back to - the original lekko code which is included at build time as a [static fallback](https://docs.lekko.com/static-fallback).
 
 If you have any concerns about performance or stability, you can reference our docs [here](https://docs.lekko.com/performance-reliability).
