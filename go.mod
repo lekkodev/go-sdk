@@ -42,6 +42,6 @@ require (
 	github.com/rjeczalik/notify v0.9.3
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/net v0.24.0
-	google.golang.org/protobuf v1.32.0
+	google.golang.org/protobuf v1.34.2
 	gopkg.in/yaml.v3 v3.0.1
 )
