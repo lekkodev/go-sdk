@@ -93,3 +93,7 @@ func (p *staticProvider) GetString(ctx context.Context, key string, namespace st
 	}
 	return dest.GetValue(), nil
 }
+
+func (p *staticProvider) GetAny(ctx context.Context, key string, namespace string) (protoreflect.ProtoMessage, error) {
+	return nil, nil
+}

@@ -26,6 +26,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
@@ -292,4 +293,8 @@ func (a *apiProvider) GetJSON(ctx context.Context, key string, namespace string,
 		return errors.Wrapf(err, "failed to unmarshal json into go type %T", result)
 	}
 	return nil
+}
+
+func (a *apiProvider) GetAny(ctx context.Context, key string, namespace string) (protoreflect.ProtoMessage, error) {
+	return nil, nil
 }

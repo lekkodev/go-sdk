@@ -143,3 +143,7 @@ func (p *retryProvider) GetString(ctx context.Context, key string, namespace str
 	p.RUnlock()
 	return p.inner.GetString(ctx, key, namespace)
 }
+
+func (p *retryProvider) GetAny(ctx context.Context, key string, namespace string) (protoreflect.ProtoMessage, error) {
+	return nil, nil
+}

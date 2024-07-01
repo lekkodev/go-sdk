@@ -83,3 +83,7 @@ func (p *fallbackProvider) GetString(ctx context.Context, key string, namespace 
 	}
 	return ret, err
 }
+
+func (p *fallbackProvider) GetAny(ctx context.Context, key string, namespace string) (protoreflect.ProtoMessage, error) {
+	return nil, nil
+}

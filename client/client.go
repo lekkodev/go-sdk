@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 // Client allows retrieving lekko configs. The appropriate method must
@@ -36,6 +37,7 @@ type Client interface {
 	// can be unmarshalled into. If an error is returned, the data
 	// stored in result is unpredictable and should not be relied upon.
 	GetProto(ctx context.Context, namespace, key string, result proto.Message) error
+	GetAny(ctx context.Context, key string, namespace string) (protoreflect.ProtoMessage, error)
 	Close(ctx context.Context) error
 }
 
@@ -89,6 +91,10 @@ func (c *client) GetProto(ctx context.Context, namespace, key string, result pro
 
 func (c *client) GetJSON(ctx context.Context, namespace, key string, result interface{}) error {
 	return c.provider.GetJSON(c.wrap(ctx), key, namespace, result)
+}
+
+func (c *client) GetAny(ctx context.Context, key string, namespace string) (protoreflect.ProtoMessage, error) {
+	return c.provider.GetAny(c.wrap(ctx), key, namespace)
 }
 
 func (c *client) wrap(ctx context.Context) context.Context {

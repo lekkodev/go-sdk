@@ -34,6 +34,7 @@ import (
 	"github.com/go-git/go-git/v5/storage/filesystem"
 	"github.com/rjeczalik/notify"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 // Constructs an in-memory store that fetches configs from a local git repo at the given path.
@@ -207,6 +208,10 @@ func (g *gitStore) Evaluate(key string, namespace string, lekkoContext map[strin
 		})
 	}
 	return nil
+}
+
+func (g *gitStore) EvaluateAny(key string, namespace string, lc map[string]interface{}) (protoreflect.ProtoMessage, error) {
+	return nil, nil
 }
 
 func (g *gitStore) Close(ctx context.Context) error {

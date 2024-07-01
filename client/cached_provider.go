@@ -110,6 +110,10 @@ func (cp *cachedProvider) Close(ctx context.Context) error {
 	return cp.store.Close(ctx)
 }
 
+func (cp *cachedProvider) GetAny(ctx context.Context, key string, namespace string) (protoreflect.ProtoMessage, error) {
+	return cp.store.EvaluateAny(key, namespace, fromContext(ctx))
+}
+
 func (cp *cachedProvider) GetBool(ctx context.Context, key string, namespace string) (bool, error) {
 	dest := &wrapperspb.BoolValue{}
 	if err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest); err != nil {

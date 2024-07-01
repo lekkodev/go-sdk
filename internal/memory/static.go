@@ -22,6 +22,7 @@ import (
 	"github.com/lekkodev/go-sdk/pkg/eval"
 	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
@@ -43,6 +44,10 @@ func NewStaticStore(featureBytes map[string]map[string][]byte) (Store, error) {
 
 type staticStore struct {
 	features map[string]map[string]*featurev1beta1.Feature
+}
+
+func (s *staticStore) EvaluateAny(key string, namespace string, lc map[string]interface{}) (protoreflect.ProtoMessage, error) {
+	return nil, nil
 }
 
 func (s *staticStore) Evaluate(key string, namespace string, lekkoContext map[string]interface{}, dest proto.Message) error {

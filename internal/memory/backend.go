@@ -29,6 +29,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 )
 
 const (
@@ -41,6 +42,7 @@ const (
 
 type Store interface {
 	Evaluate(key string, namespace string, lekkoContext map[string]interface{}, dest proto.Message) error
+	EvaluateAny(key string, namespace string, lekkoContext map[string]interface{}) (protoreflect.ProtoMessage, error)
 	Close(ctx context.Context) error
 }
 
@@ -149,6 +151,33 @@ func (b *backendStore) Evaluate(key string, namespace string, lc map[string]inte
 		ResultPath:    toResultPathProto(rp),
 	})
 	return nil
+}
+
+func (b *backendStore) EvaluateAny(key string, namespace string, lc map[string]interface{}) (protoreflect.ProtoMessage, error) {
+	registry := protoregistry.GlobalTypes // TODO get from FDS
+	anyMsg, cfg, rp, err := b.store.evaluate(key, namespace, lc)
+	if err != nil {
+		return nil, err
+	}
+	messageType, err := registry.FindMessageByName(protoreflect.FullName(anyMsg.TypeUrl))
+	if err != nil {
+		return nil, fmt.Errorf("failed to find message type: %v", err)
+	}
+	message := messageType.New().Interface()
+	err = proto.Unmarshal(anyMsg.Value, message)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal any message: %v", err)
+	}
+	b.eb.track(&backendv1beta1.FlagEvaluationEvent{
+		RepoKey:       b.repoKey,
+		CommitSha:     cfg.CommitSHA,
+		FeatureSha:    cfg.ConfigSHA,
+		NamespaceName: namespace,
+		FeatureName:   cfg.Config.GetKey(),
+		ContextKeys:   toContextKeysProto(lc),
+		ResultPath:    toResultPathProto(rp),
+	})
+	return message, nil
 }
 
 func (b *backendStore) registerWithBackoff(ctx context.Context) (string, error) {

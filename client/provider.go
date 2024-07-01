@@ -25,6 +25,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/net/http2"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 // A provider evaluates configuration from a number of sources.
@@ -35,6 +36,7 @@ type Provider interface {
 	GetString(ctx context.Context, key string, namespace string) (string, error)
 	GetProto(ctx context.Context, key string, namespace string, result proto.Message) error
 	GetJSON(ctx context.Context, key string, namespace string, result interface{}) error
+	GetAny(ctx context.Context, key string, namespace string) (protoreflect.ProtoMessage, error)
 	// Error will get called by the closure returned in Client initialization.
 	Close(ctx context.Context) error
 }
