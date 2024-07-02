@@ -157,7 +157,7 @@ func (b *backendStore) EvaluateAny(key string, namespace string, lc map[string]i
 	if err != nil {
 		return nil, err
 	}
-	messageType, err := b.store.registry.Types.FindMessageByName(protoreflect.FullName(anyMsg.TypeUrl))
+	messageType, err := b.store.registry.Types.FindMessageByURL(anyMsg.TypeUrl)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find message type: %v", err)
 	}

@@ -37,7 +37,7 @@ type Client interface {
 	// can be unmarshalled into. If an error is returned, the data
 	// stored in result is unpredictable and should not be relied upon.
 	GetProto(ctx context.Context, namespace, key string, result proto.Message) error
-	GetAny(ctx context.Context, key string, namespace string) (protoreflect.ProtoMessage, error)
+	GetAny(ctx context.Context, namespace string, key string) (protoreflect.ProtoMessage, error)
 	Close(ctx context.Context) error
 }
 
@@ -93,7 +93,7 @@ func (c *client) GetJSON(ctx context.Context, namespace, key string, result inte
 	return c.provider.GetJSON(c.wrap(ctx), key, namespace, result)
 }
 
-func (c *client) GetAny(ctx context.Context, key string, namespace string) (protoreflect.ProtoMessage, error) {
+func (c *client) GetAny(ctx context.Context, namespace string, key string) (protoreflect.ProtoMessage, error) {
 	return c.provider.GetAny(c.wrap(ctx), key, namespace)
 }
 
