@@ -29,7 +29,6 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
-	"google.golang.org/protobuf/reflect/protoregistry"
 )
 
 const (
@@ -154,12 +153,11 @@ func (b *backendStore) Evaluate(key string, namespace string, lc map[string]inte
 }
 
 func (b *backendStore) EvaluateAny(key string, namespace string, lc map[string]interface{}) (protoreflect.ProtoMessage, error) {
-	registry := protoregistry.GlobalTypes // TODO get from FDS
 	anyMsg, cfg, rp, err := b.store.evaluate(key, namespace, lc)
 	if err != nil {
 		return nil, err
 	}
-	messageType, err := registry.FindMessageByName(protoreflect.FullName(anyMsg.TypeUrl))
+	messageType, err := b.store.registry.Types.FindMessageByName(protoreflect.FullName(anyMsg.TypeUrl))
 	if err != nil {
 		return nil, fmt.Errorf("failed to find message type: %v", err)
 	}
@@ -231,6 +229,7 @@ func (b *backendStore) updateStoreWithBackoff(ctx context.Context) (bool, error)
 			return errors.Wrap(err, "get repository contents from backend")
 		}
 		contents = resp.Msg
+
 		return nil
 	}
 	exp := backoff.NewExponentialBackOff()

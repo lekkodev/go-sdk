@@ -25,6 +25,7 @@ import (
 	featurev1beta1 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/feature/v1beta1"
 	clientv1beta1 "buf.build/gen/go/lekkodev/sdk/protocolbuffers/go/lekko/client/v1beta1"
 	serverv1beta1 "buf.build/gen/go/lekkodev/sdk/protocolbuffers/go/lekko/server/v1beta1"
+	"github.com/lekkodev/cli/pkg/star/prototypes"
 	"github.com/lekkodev/go-sdk/pkg/eval"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/encoding/protowire"
@@ -61,6 +62,7 @@ type store struct {
 	commitSHA           string
 	contentHash         string
 	ownerName, repoName string
+	registry            *prototypes.SerializableTypes
 }
 
 type storedConfig struct {
@@ -91,6 +93,14 @@ func (s *store) update(contents *backendv1beta1.GetRepositoryContentsResponse) (
 	if !shouldUpdate {
 		return false, nil
 	}
+	bytes, err := proto.Marshal(contents.FileDescriptorSet)
+	if err != nil {
+		return false, err
+	}
+	registry, err := prototypes.BuildDynamicTypeRegistryFromBufImage(bytes)
+	if err != nil {
+		return false, err
+	}
 
 	newConfigs := make(map[string]map[string]configData, len(contents.GetNamespaces()))
 	for _, ns := range contents.GetNamespaces() {
@@ -115,6 +125,7 @@ func (s *store) update(contents *backendv1beta1.GetRepositoryContentsResponse) (
 	if err := req.calculateContentHash(); err != nil {
 		return false, err
 	}
+	s.registry = registry
 	s.configs = newConfigs
 	s.commitSHA = contents.GetCommitSha()
 	s.contentHash = *req.contentHash
