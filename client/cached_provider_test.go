@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -132,6 +133,10 @@ func (ts *testStore) Evaluate(key string, namespace string, lc map[string]interf
 		return errors.Errorf("key %s not found", key)
 	}
 	return a.UnmarshalTo(dest)
+}
+
+func (ts *testStore) EvaluateAny(key string, namespace string, lc map[string]interface{}) (protoreflect.ProtoMessage, error) {
+	return nil, nil
 }
 
 func (ts *testStore) Close(ctx context.Context) error {

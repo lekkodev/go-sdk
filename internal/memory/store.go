@@ -25,6 +25,7 @@ import (
 	featurev1beta1 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/feature/v1beta1"
 	clientv1beta1 "buf.build/gen/go/lekkodev/sdk/protocolbuffers/go/lekko/client/v1beta1"
 	serverv1beta1 "buf.build/gen/go/lekkodev/sdk/protocolbuffers/go/lekko/server/v1beta1"
+	"github.com/lekkodev/cli/pkg/star/prototypes"
 	"github.com/lekkodev/go-sdk/pkg/eval"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/encoding/protowire"
@@ -61,6 +62,7 @@ type store struct {
 	commitSHA           string
 	contentHash         string
 	ownerName, repoName string
+	registry            *prototypes.SerializableTypes
 }
 
 type storedConfig struct {
@@ -91,6 +93,14 @@ func (s *store) update(contents *backendv1beta1.GetRepositoryContentsResponse) (
 	if !shouldUpdate {
 		return false, nil
 	}
+	bytes, err := proto.Marshal(contents.FileDescriptorSet)
+	if err != nil {
+		return false, err
+	}
+	registry, err := prototypes.BuildDynamicTypeRegistryFromBufImage(bytes)
+	if err != nil {
+		return false, err
+	}
 
 	newConfigs := make(map[string]map[string]configData, len(contents.GetNamespaces()))
 	for _, ns := range contents.GetNamespaces() {
@@ -115,6 +125,7 @@ func (s *store) update(contents *backendv1beta1.GetRepositoryContentsResponse) (
 	if err := req.calculateContentHash(); err != nil {
 		return false, err
 	}
+	s.registry = registry
 	s.configs = newConfigs
 	s.commitSHA = contents.GetCommitSha()
 	s.contentHash = *req.contentHash
@@ -163,26 +174,25 @@ func (s *store) getCommitSha() string {
 	return ret
 }
 
-func (s *store) evaluateType(
-	key string, namespace string, lc map[string]interface{}, dest proto.Message) (*storedConfig, eval.ResultPath, error) {
+func (s *store) evaluate(key string, namespace string, lc map[string]interface{}) (*anypb.Any, *storedConfig, eval.ResultPath, error) {
 	var typeUrl string
 	var targetFieldNumber uint64
 	targetFieldNumber = 0
 	for { //TODO - stop loops (especially for server side eval..
 		cfg, err := s.get(namespace, key)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		referencedConfigToValueMap, err := s.maybeEvaluateReferencedConfigs(cfg, key, namespace, lc)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		evaluableConfig := eval.NewV1Beta3(cfg.Config, namespace, referencedConfigToValueMap)
 		a, rp, err := evaluableConfig.Evaluate(lc)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		if a.TypeUrl == "type.googleapis.com/lekko.protobuf.ConfigCall" {
@@ -190,7 +200,7 @@ func (s *store) evaluateType(
 			for len(b) > 0 {
 				fid, wireType, n := protowire.ConsumeTag(b)
 				if n < 0 {
-					return nil, nil, protowire.ParseError(n)
+					return nil, nil, nil, protowire.ParseError(n)
 				}
 				b = b[n:]
 				switch fid {
@@ -206,7 +216,7 @@ func (s *store) evaluateType(
 					n = protowire.ConsumeFieldValue(fid, wireType, b)
 				}
 				if n < 0 {
-					return nil, nil, protowire.ParseError(n)
+					return nil, nil, nil, protowire.ParseError(n)
 				}
 				b = b[n:]
 			}
@@ -216,12 +226,12 @@ func (s *store) evaluateType(
 				for len(b) > 0 {
 					fid, wireType, n := protowire.ConsumeTag(b)
 					if n < 0 {
-						return nil, nil, protowire.ParseError(n)
+						return nil, nil, nil, protowire.ParseError(n)
 					}
 					b = b[n:]
 					n = protowire.ConsumeFieldValue(fid, wireType, b)
 					if n < 0 {
-						return nil, nil, protowire.ParseError(n)
+						return nil, nil, nil, protowire.ParseError(n)
 					}
 					if targetFieldNumber == uint64(fid) {
 						var value []byte
@@ -237,13 +247,21 @@ func (s *store) evaluateType(
 					}
 				}
 			}
-
-			if err := a.UnmarshalTo(dest); err != nil {
-				return nil, nil, errors.Wrapf(err, "invalid type, expecting %T", dest)
-			}
-			return cfg, rp, nil
+			return a, cfg, rp, nil
 		}
 	}
+}
+
+func (s *store) evaluateType(
+	key string, namespace string, lc map[string]interface{}, dest proto.Message) (*storedConfig, eval.ResultPath, error) {
+	a, cfg, rp, err := s.evaluate(key, namespace, lc)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := a.UnmarshalTo(dest); err != nil {
+		return nil, nil, errors.Wrapf(err, "invalid type, expecting %T", dest)
+	}
+	return cfg, rp, nil
 }
 
 func (s *store) maybeEvaluateReferencedConfigs(

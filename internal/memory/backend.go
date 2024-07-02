@@ -41,6 +41,7 @@ const (
 
 type Store interface {
 	Evaluate(key string, namespace string, lekkoContext map[string]interface{}, dest proto.Message) error
+	EvaluateAny(key string, namespace string, lekkoContext map[string]interface{}) (protoreflect.ProtoMessage, error)
 	Close(ctx context.Context) error
 }
 
@@ -151,6 +152,32 @@ func (b *backendStore) Evaluate(key string, namespace string, lc map[string]inte
 	return nil
 }
 
+func (b *backendStore) EvaluateAny(key string, namespace string, lc map[string]interface{}) (protoreflect.ProtoMessage, error) {
+	anyMsg, cfg, rp, err := b.store.evaluate(key, namespace, lc)
+	if err != nil {
+		return nil, err
+	}
+	messageType, err := b.store.registry.Types.FindMessageByURL(anyMsg.TypeUrl)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find message type: %v", err)
+	}
+	message := messageType.New().Interface()
+	err = proto.Unmarshal(anyMsg.Value, message)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal any message: %v", err)
+	}
+	b.eb.track(&backendv1beta1.FlagEvaluationEvent{
+		RepoKey:       b.repoKey,
+		CommitSha:     cfg.CommitSHA,
+		FeatureSha:    cfg.ConfigSHA,
+		NamespaceName: namespace,
+		FeatureName:   cfg.Config.GetKey(),
+		ContextKeys:   toContextKeysProto(lc),
+		ResultPath:    toResultPathProto(rp),
+	})
+	return message, nil
+}
+
 func (b *backendStore) registerWithBackoff(ctx context.Context) (string, error) {
 	// registration should not take forever
 	ctx, cancel := context.WithTimeout(ctx, defaultRPCDeadline)
@@ -202,6 +229,7 @@ func (b *backendStore) updateStoreWithBackoff(ctx context.Context) (bool, error)
 			return errors.Wrap(err, "get repository contents from backend")
 		}
 		contents = resp.Msg
+
 		return nil
 	}
 	exp := backoff.NewExponentialBackOff()

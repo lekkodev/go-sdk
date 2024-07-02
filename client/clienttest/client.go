@@ -21,6 +21,7 @@ import (
 
 	"github.com/lekkodev/go-sdk/client"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 var (
@@ -180,4 +181,8 @@ func (tc *TestClient) GetJSON(_ context.Context, namespace, key string, result i
 		return ErrTypeMismatch
 	}
 	return json.Unmarshal(bytes, result)
+}
+
+func (tc *TestClient) GetAny(ctx context.Context, key string, namespace string) (protoreflect.ProtoMessage, error) {
+	return nil, nil
 }
