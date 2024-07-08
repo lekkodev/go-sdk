@@ -1,15 +1,14 @@
-run:
-  skip-dirs-use-default: false
 linters-settings:
   errcheck:
     check-type-assertions: true
   forbidigo:
     forbid:
       - '^log\.'
-      - '^print$'
-      - '^println$'
+      - "^print$"
+      - "^println$"
       # - '^fmt\.Print'
 issues:
+  exclude-dirs-use-default: false
   exclude-rules:
     - path: cmd/example/main.go
       text: "use of `log.Fatal` forbidden by pattern"
@@ -31,6 +30,8 @@ issues:
       text: "use of `log.Printf` forbidden by pattern"
     - path: internal/memory/events.go
       text: "Non-inherited new context"
+    - path: pkg/debug/debug.go
+      text: "don't use `init` function"
 linters:
   enable:
     - asciicheck
@@ -38,7 +39,6 @@ linters:
     - bodyclose
     - containedctx
     - contextcheck
-    - deadcode
     - decorder
     # - depguard
     - dogsled
@@ -69,12 +69,10 @@ linters:
     - promlinter
     - rowserrcheck
     - staticcheck
-    - structcheck
-      #  - stylecheck
+    - stylecheck
     - typecheck
     - unconvert
     - unused
-    - varcheck
     - wastedassign
     - whitespace
   disable-all: true

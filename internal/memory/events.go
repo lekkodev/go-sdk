@@ -130,7 +130,7 @@ func (e *eventBatcher) sendBatchWithBackoff(ctx context.Context, batch []*backen
 	}
 }
 
-func (e *eventBatcher) close(ctx context.Context) error {
+func (e *eventBatcher) close() error {
 	if e == nil {
 		return nil
 	}

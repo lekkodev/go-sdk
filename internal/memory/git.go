@@ -95,7 +95,7 @@ func newGitStore(
 		g.sessionKey = sessionKey
 		g.eb = newEventBatcher(ctx, distClient, g.sessionKey, g.apiKey, eventsBatchSize)
 	}
-	if _, err := g.load(ctx); err != nil {
+	if _, err := g.load(); err != nil {
 		return nil, err
 	}
 	g.server = newSDKServer(port, g.store)
@@ -153,7 +153,7 @@ func (g *gitStore) registerWithBackoff(ctx context.Context) (string, error) {
 	return sessionKey, nil
 }
 
-func (g *gitStore) load(ctx context.Context) (bool, error) {
+func (g *gitStore) load() (bool, error) {
 	repo, err := newRepository(g.storer, g.fs)
 	if err != nil {
 		return false, err
@@ -183,7 +183,7 @@ func (g *gitStore) watch(ctx context.Context, fsChan <-chan notify.EventInfo) {
 		case <-ctx.Done():
 			return
 		case <-fsChan:
-			_, err := g.load(ctx)
+			_, err := g.load()
 			if err != nil {
 				log.Printf("error loading contents: %v\n", err)
 			}
@@ -218,7 +218,7 @@ func (g *gitStore) Close(ctx context.Context) error {
 	// cancel any ongoing background loops
 	g.cancel()
 	g.server.close(ctx)
-	g.eb.close(ctx)
+	g.eb.close()
 	if g.fsChan != nil {
 		notify.Stop(g.fsChan)
 		close(g.fsChan)

@@ -49,7 +49,7 @@ func ConnectAPIProvider(ctx context.Context, apiKey string, rk *RepositoryKey, o
 	withFallbackURL(defaultAPIURL).apply(cfg)
 	WithAPIKey(apiKey).apply(cfg)
 	withRepositoryKey(rk).apply(cfg)
-	if err := cfg.validate(ctx); err != nil {
+	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
 	provider := &apiProvider{
@@ -77,7 +77,7 @@ func ConnectSidecarProvider(ctx context.Context, url string, rk *RepositoryKey, 
 	withFallbackURL(defaultSidecarURL).apply(cfg)
 	withRepositoryKey(rk).apply(cfg)
 	WithAllowHTTP().apply(cfg) // sidecar must communicate over h2c
-	if err := cfg.validate(ctx); err != nil {
+	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
 	// The sidecar exposes the same interface as the backend API, so we can transparently
