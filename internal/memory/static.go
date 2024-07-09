@@ -51,7 +51,7 @@ func (s *staticStore) EvaluateAny(key string, namespace string, lc map[string]in
 }
 
 func (s *staticStore) Evaluate(key string, namespace string, lekkoContext map[string]interface{}, dest proto.Message) error {
-	var typeUrl string
+	var typeURL string
 	var targetFieldNumber uint64
 	targetFieldNumber = 0
 	for { // TODO - stop loops (especially for server side eval..
@@ -78,7 +78,7 @@ func (s *staticStore) Evaluate(key string, namespace string, lekkoContext map[st
 				b = b[n:]
 				switch fid {
 				case 1:
-					typeUrl, n = protowire.ConsumeString(b)
+					typeURL, n = protowire.ConsumeString(b)
 				case 2:
 					namespace, n = protowire.ConsumeString(b)
 				case 3:
@@ -111,7 +111,7 @@ func (s *staticStore) Evaluate(key string, namespace string, lekkoContext map[st
 						value = protowire.AppendTag(value, 1, protowire.BytesType)
 						value = protowire.AppendBytes(value, b[:n])
 						a = &anypb.Any{
-							TypeUrl: typeUrl,
+							TypeUrl: typeURL,
 							Value:   value,
 						}
 						return a.UnmarshalTo(dest) // TODO default values and do we want to support deeper nesting?

@@ -26,6 +26,7 @@ import (
 	backendv1beta1 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/backend/v1beta1"
 	"github.com/bufbuild/connect-go"
 	"github.com/cenkalti/backoff/v4"
+	"github.com/lekkodev/go-sdk/pkg/debug"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -122,7 +123,7 @@ func (b *backendStore) Close(ctx context.Context) error {
 	// cancel any ongoing background loops
 	b.cancel()
 	b.server.close(ctx)
-	b.eb.close(ctx)
+	b.eb.close()
 	// wait for background work to complete
 	b.wg.Wait()
 	req := connect.NewRequest(&backendv1beta1.DeregisterClientRequest{
@@ -139,6 +140,7 @@ func (b *backendStore) Evaluate(key string, namespace string, lc map[string]inte
 	if err != nil {
 		return err
 	}
+	debug.LogInfo("Lekko evaluation", "name", fmt.Sprintf("%s/%s", namespace, key), "context", lc, "result", dest)
 	// track metrics
 	b.eb.track(&backendv1beta1.FlagEvaluationEvent{
 		RepoKey:       b.repoKey,

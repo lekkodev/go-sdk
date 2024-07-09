@@ -175,7 +175,7 @@ func (s *store) getCommitSha() string {
 }
 
 func (s *store) evaluate(key string, namespace string, lc map[string]interface{}) (*anypb.Any, *storedConfig, eval.ResultPath, error) {
-	var typeUrl string
+	var typeURL string
 	var targetFieldNumber uint64
 	targetFieldNumber = 0
 	for { //TODO - stop loops (especially for server side eval..
@@ -205,7 +205,7 @@ func (s *store) evaluate(key string, namespace string, lc map[string]interface{}
 				b = b[n:]
 				switch fid {
 				case 1:
-					typeUrl, n = protowire.ConsumeString(b)
+					typeURL, n = protowire.ConsumeString(b)
 				case 2:
 					namespace, n = protowire.ConsumeString(b)
 				case 3:
@@ -238,7 +238,7 @@ func (s *store) evaluate(key string, namespace string, lc map[string]interface{}
 						value = protowire.AppendTag(value, 1, protowire.BytesType)
 						value = protowire.AppendBytes(value, b[:n])
 						a = &anypb.Any{
-							TypeUrl: typeUrl,
+							TypeUrl: typeURL,
 							Value:   value,
 						}
 						break // TODO default values and do we want to support deeper nesting?

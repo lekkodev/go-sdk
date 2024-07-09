@@ -17,6 +17,7 @@ package client
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -43,6 +44,7 @@ type Provider interface {
 
 type ProviderOption interface {
 	apply(*providerConfig)
+	String() string
 }
 
 type URLOption struct {
@@ -58,6 +60,10 @@ func WithURL(url string) ProviderOption {
 
 func (o *URLOption) apply(pc *providerConfig) { pc.url = o.URL }
 
+func (o *URLOption) String() string {
+	return fmt.Sprintf("%+v", *o)
+}
+
 type APIKeyOption struct {
 	APIKey string
 }
@@ -70,6 +76,10 @@ func WithAPIKey(apiKey string) ProviderOption {
 
 func (o *APIKeyOption) apply(pc *providerConfig) { pc.apiKey = o.APIKey }
 
+func (o *APIKeyOption) String() string {
+	return fmt.Sprintf("%+v", *o)
+}
+
 type AllowHTTPOption struct{}
 
 // For connecting to the sidecar without TLS configured.
@@ -78,6 +88,10 @@ func WithAllowHTTP() ProviderOption {
 }
 
 func (o *AllowHTTPOption) apply(pc *providerConfig) { pc.allowHTTP = true }
+
+func (o *AllowHTTPOption) String() string {
+	return fmt.Sprintf("%+v", *o)
+}
 
 type UpdateIntervalOption struct {
 	UpdateInterval time.Duration
@@ -93,6 +107,10 @@ func (o *UpdateIntervalOption) apply(pc *providerConfig) {
 	pc.updateInterval = o.UpdateInterval
 }
 
+func (o *UpdateIntervalOption) String() string {
+	return fmt.Sprintf("%+v", *o)
+}
+
 type ServerOption struct {
 	Port int32
 }
@@ -105,6 +123,10 @@ func WithServerOption(port int32) ProviderOption {
 
 func (o *ServerOption) apply(pc *providerConfig) { pc.serverPort = o.Port }
 
+func (o *ServerOption) String() string {
+	return fmt.Sprintf("%+v", *o)
+}
+
 type providerConfig struct {
 	repoKey        *RepositoryKey
 	apiKey, url    string
@@ -113,7 +135,7 @@ type providerConfig struct {
 	allowHTTP      bool
 }
 
-func (cfg *providerConfig) validate(ctx context.Context) error {
+func (cfg *providerConfig) validate() error {
 	if cfg.repoKey == nil || len(cfg.repoKey.OwnerName) == 0 || len(cfg.repoKey.RepoName) == 0 {
 		return errors.New("missing repository key")
 	}
@@ -164,6 +186,10 @@ func (o *fallbackURLOption) apply(pc *providerConfig) {
 	}
 }
 
+func (o *fallbackURLOption) String() string {
+	return fmt.Sprintf("%+v", *o)
+}
+
 type repositoryKeyOption struct {
 	repoKey *RepositoryKey
 }
@@ -174,4 +200,8 @@ func withRepositoryKey(repoKey *RepositoryKey) ProviderOption {
 
 func (o *repositoryKeyOption) apply(cfg *providerConfig) {
 	cfg.repoKey = o.repoKey
+}
+
+func (o *repositoryKeyOption) String() string {
+	return fmt.Sprintf("%+v", *o)
 }

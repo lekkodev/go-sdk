@@ -45,7 +45,7 @@ func CachedAPIProvider(
 	}
 	withFallbackURL(defaultAPIURL).apply(cfg)
 	withRepositoryKey(rk).apply(cfg)
-	if err := cfg.validate(ctx); err != nil {
+	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
 
@@ -84,7 +84,7 @@ func CachedGitFsProvider(
 	if len(cfg.apiKey) > 0 {
 		withFallbackURL(defaultAPIURL).apply(cfg)
 	}
-	if err := cfg.validate(ctx); err != nil {
+	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
 	gitStore, err := memory.NewGitStore(
