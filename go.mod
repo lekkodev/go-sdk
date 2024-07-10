@@ -38,7 +38,6 @@ require (
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/go-git/go-billy/v5 v5.5.0
 	github.com/go-git/go-git/v5 v5.12.0
-	github.com/lekkodev/cli v0.3.33
 	github.com/pkg/errors v0.9.1
 	github.com/rjeczalik/notify v0.9.3
 	github.com/stretchr/testify v1.9.0
