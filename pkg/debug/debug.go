@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"os"
+	"strings"
 )
 
 func LogDebug(msg string, args ...any) {
@@ -32,6 +33,16 @@ func LogInfo(msg string, args ...any) {
 
 func LogError(msg string, args ...any) {
 	slog.Error(msg, serializeArgs(args...)...)
+}
+
+// Returns a masked version of the string, with the first showLen
+// characters visible.
+func Mask(s string, showLen int) string {
+	i := showLen
+	if i >= len(s) {
+		return s
+	}
+	return s[:i] + strings.Repeat("*", len(s)-showLen)
 }
 
 func serializeArgs(args ...any) []any {
