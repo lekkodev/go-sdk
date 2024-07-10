@@ -140,7 +140,7 @@ func (b *backendStore) Evaluate(key string, namespace string, lc map[string]inte
 	if err != nil {
 		return err
 	}
-	debug.LogInfo("Lekko evaluation", "name", fmt.Sprintf("%s/%s", namespace, key), "context", lc, "result", dest)
+	debug.LogDebug("Lekko evaluation", "name", fmt.Sprintf("%s/%s", namespace, key), "context", lc, "result", dest)
 	// track metrics
 	b.eb.track(&backendv1beta1.FlagEvaluationEvent{
 		RepoKey:       b.repoKey,

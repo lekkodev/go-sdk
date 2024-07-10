@@ -67,7 +67,7 @@ func NewClientFromEnv(ctx context.Context, repoOwner, repoName string, opts ...P
 	apiKey := os.Getenv("LEKKO_API_KEY")
 	var provider Provider
 	if apiKey == "" {
-		debug.LogInfo("LEKKO_API_KEY environment variable is not set, in-code fallback will be used")
+		debug.LogInfo("LEKKO_API_KEY environment variable is not set, Lekko SDK client will not be initialized and in-code fallback will be used")
 		provider = &noOpProvider{}
 	} else {
 		opts = append(opts, WithAPIKey(apiKey))
