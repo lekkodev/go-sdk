@@ -15,25 +15,60 @@
 package debug
 
 import (
+	"encoding/json"
 	"log/slog"
 	"os"
+	"strings"
 )
 
-func LogInfo(msg string, args ...any) {
+func LogDebug(msg string, args ...any) {
 	if isDebugMode {
-		slog.Info(msg, args...)
+		slog.Info(msg, serializeArgs(args...)...)
 	}
+}
+
+func LogInfo(msg string, args ...any) {
+	slog.Info(msg, serializeArgs(args...)...)
 }
 
 func LogError(msg string, args ...any) {
-	if isDebugMode {
-		slog.Error(msg, args...)
+	slog.Error(msg, serializeArgs(args...)...)
+}
+
+// Returns a masked version of the string, with the first showLen
+// characters visible.
+func Mask(s string, showLen int) string {
+	i := showLen
+	if i >= len(s) {
+		return s
 	}
+	return s[:i] + strings.Repeat("*", len(s)-showLen)
+}
+
+func serializeArgs(args ...any) []any {
+	serialized := make([]any, len(args))
+	for i, arg := range args {
+		if m, ok := arg.(map[string]interface{}); ok {
+			if jb, err := json.Marshal(m); err == nil {
+				serialized[i] = string(jb)
+			} else {
+				serialized[i] = arg
+			}
+		} else {
+			serialized[i] = arg
+		}
+	}
+	return serialized
 }
 
 // just a switch for now, later we can expose log level and ability to set custom logger
-var isDebugMode = os.Getenv("LEKKO_DEBUG") == "true"
+var isDebugMode = os.Getenv("LEKKO_DEBUG") == "true" || os.Getenv("LEKKO_DEBUG") == "1"
 
+// Initialization message for package
 func init() {
-	LogInfo("LEKKO_DEBUG=true, running with additional logging")
+	if isDebugMode {
+		LogDebug("LEKKO_DEBUG=true, running with additional logging")
+	} else {
+		LogInfo("Set LEKKO_DEBUG environment variable to \"true\" to enable debug evaluation logs")
+	}
 }

@@ -67,9 +67,14 @@ func NewClientFromEnv(ctx context.Context, repoOwner, repoName string, opts ...P
 	apiKey := os.Getenv("LEKKO_API_KEY")
 	var provider Provider
 	if apiKey == "" {
-		debug.LogInfo("LEKKO_API_KEY environment variable is not set, in-code fallback will be used")
+		debug.LogInfo("LEKKO_API_KEY environment variable is not set, Lekko SDK client will not be initialized and in-code fallback will be used")
 		provider = &noOpProvider{}
 	} else {
+		serializedOpts := make([]string, len(opts)+1)
+		for i, opt := range opts {
+			serializedOpts[i] = fmt.Sprintf("%v", opt)
+		}
+		serializedOpts[len(opts)] = debug.Mask(apiKey, 12)
 		opts = append(opts, WithAPIKey(apiKey))
 		var err error
 		provider, err = CachedAPIProvider(ctx, &RepositoryKey{
@@ -77,10 +82,10 @@ func NewClientFromEnv(ctx context.Context, repoOwner, repoName string, opts ...P
 			RepoName:  repoName,
 		}, opts...)
 		if err != nil {
-			debug.LogError("Error connecting to Lekko, in-code fallback will be used", "opts", fmt.Sprintf("%v", opts), "err", err)
+			debug.LogError("Error connecting to Lekko, in-code fallback will be used", "opts", serializedOpts, "err", err)
 			provider = &noOpProvider{}
 		} else {
-			debug.LogInfo("Connected to Lekko", "repository", fmt.Sprintf("%s/%s", repoOwner, repoName), "opts", opts)
+			debug.LogInfo("Connected to Lekko", "repository", fmt.Sprintf("%s/%s", repoOwner, repoName), "opts", serializedOpts)
 		}
 	}
 	return NewClient(provider)
