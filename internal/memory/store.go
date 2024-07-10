@@ -159,7 +159,10 @@ func BuildDynamicTypeRegistryFromBufImage(image []byte) (*SerializableTypes, err
 
 func RegisterDynamicTypes(files *protoregistry.Files) (*SerializableTypes, error) {
 	// Start from an empty type registry.
-	ret := &SerializableTypes{}
+	ret := &SerializableTypes{
+		Types:             &protoregistry.Types{},
+		FileDescriptorSet: &descriptorpb.FileDescriptorSet{},
+	}
 	// First, add required types
 	for _, fd := range requiredFileDescriptors {
 		if err := ret.AddFileDescriptor(fd, false); err != nil {
