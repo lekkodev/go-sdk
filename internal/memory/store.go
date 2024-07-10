@@ -25,11 +25,15 @@ import (
 	featurev1beta1 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/feature/v1beta1"
 	clientv1beta1 "buf.build/gen/go/lekkodev/sdk/protocolbuffers/go/lekko/client/v1beta1"
 	serverv1beta1 "buf.build/gen/go/lekkodev/sdk/protocolbuffers/go/lekko/server/v1beta1"
-	"github.com/lekkodev/cli/pkg/star/prototypes"
 	"github.com/lekkodev/go-sdk/pkg/eval"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protodesc"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
+	"google.golang.org/protobuf/types/descriptorpb"
+	"google.golang.org/protobuf/types/dynamicpb"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -53,6 +57,64 @@ type configData struct {
 	configSHA string
 }
 
+type SerializableTypes struct {
+	Types             *protoregistry.Types
+	FileDescriptorSet *descriptorpb.FileDescriptorSet
+}
+
+func (st *SerializableTypes) AddFileDescriptor(fd protoreflect.FileDescriptor, checkNotExists bool) error {
+	existingTypes := make(map[string]struct{})
+	if checkNotExists {
+		st.Types.RangeEnums(func(et protoreflect.EnumType) bool {
+			existingTypes[string(et.Descriptor().FullName())] = struct{}{}
+			return true
+		})
+		st.Types.RangeMessages(func(et protoreflect.MessageType) bool {
+			existingTypes[string(et.Descriptor().FullName())] = struct{}{}
+			return true
+		})
+		st.Types.RangeExtensions(func(et protoreflect.ExtensionType) bool {
+			existingTypes[string(et.TypeDescriptor().FullName())] = struct{}{}
+			return true
+		})
+	}
+	var numRegistered int
+	for i := 0; i < fd.Enums().Len(); i++ {
+		ed := fd.Enums().Get(i)
+		if _, ok := existingTypes[string(ed.FullName())]; ok {
+			continue
+		}
+		if err := st.Types.RegisterEnum(dynamicpb.NewEnumType(ed)); err != nil {
+			return errors.Wrap(err, "register enum")
+		}
+		numRegistered++
+	}
+	for i := 0; i < fd.Messages().Len(); i++ {
+		md := fd.Messages().Get(i)
+		if _, ok := existingTypes[string(md.FullName())]; ok {
+			continue
+		}
+		if err := st.Types.RegisterMessage(dynamicpb.NewMessageType(md)); err != nil {
+			return errors.Wrap(err, "register message")
+		}
+		numRegistered++
+	}
+	for i := 0; i < fd.Extensions().Len(); i++ {
+		exd := fd.Extensions().Get(i)
+		if _, ok := existingTypes[string(exd.FullName())]; ok {
+			continue
+		}
+		if err := st.Types.RegisterExtension(dynamicpb.NewExtensionType(exd)); err != nil {
+			return errors.Wrap(err, "register extension")
+		}
+		numRegistered++
+	}
+	if numRegistered > 0 {
+		st.FileDescriptorSet.File = append(st.FileDescriptorSet.File, protodesc.ToFileDescriptorProto(fd))
+	}
+	return nil
+}
+
 // store implements an in-memory store for configurations. It stores
 // the commit sha of the contents. It supports atomically updating
 // all the configs with the contents of a new commit via the Update method.
@@ -62,12 +124,68 @@ type store struct {
 	commitSHA           string
 	contentHash         string
 	ownerName, repoName string
-	registry            *prototypes.SerializableTypes
+	registry            *SerializableTypes
 }
 
 type storedConfig struct {
 	Config               *featurev1beta1.Feature
 	CommitSHA, ConfigSHA string
+}
+
+var requiredFileDescriptors = []protoreflect.FileDescriptor{
+	// Since we're internally converting starlark primitive types to google.protobuf.*Value,
+	// we need to ensure that the wrapperspb types exist in the type registry in order for
+	// json marshaling to work. However, we also need to ensure that type registration does
+	// not panic in the event that the user also imported wrappers.proto
+	wrapperspb.File_google_protobuf_wrappers_proto,
+	// In the case of json feature flags, we will internally represent the json object as a structpb
+	// proto object.
+	structpb.File_google_protobuf_struct_proto,
+}
+
+func BuildDynamicTypeRegistryFromBufImage(image []byte) (*SerializableTypes, error) {
+	fds := &descriptorpb.FileDescriptorSet{}
+
+	if err := proto.Unmarshal(image, fds); err != nil {
+		return nil, errors.Wrap(err, "proto unmarshal")
+	}
+	files, err := protodesc.NewFiles(fds)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "protodesc.NewFiles")
+	}
+	return RegisterDynamicTypes(files)
+}
+
+func RegisterDynamicTypes(files *protoregistry.Files) (*SerializableTypes, error) {
+	// Start from an empty type registry.
+	ret := &SerializableTypes{
+		Types:             &protoregistry.Types{},
+		FileDescriptorSet: &descriptorpb.FileDescriptorSet{},
+	}
+	// First, add required types
+	for _, fd := range requiredFileDescriptors {
+		if err := ret.AddFileDescriptor(fd, false); err != nil {
+			return nil, errors.Wrapf(err, "registering file descriptor: %s", string(fd.FullName()))
+		}
+	}
+	// Import user defined types, ignoring types that already exist. All user-defined types
+	// should be explicitly imported in their .proto files, which will end up
+	// getting included since we're including imports in our file descriptor set.
+	if files != nil {
+		var rangeErr error
+		files.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
+			if err := ret.AddFileDescriptor(fd, true); err != nil {
+				rangeErr = errors.Wrap(err, "registering user-defined types")
+				return false
+			}
+			return true
+		})
+		if rangeErr != nil {
+			return nil, rangeErr
+		}
+	}
+	return ret, nil
 }
 
 // Attempts to atomically update the store. This method will first hold a read-lock
@@ -97,7 +215,7 @@ func (s *store) update(contents *backendv1beta1.GetRepositoryContentsResponse) (
 	if err != nil {
 		return false, err
 	}
-	registry, err := prototypes.BuildDynamicTypeRegistryFromBufImage(bytes)
+	registry, err := BuildDynamicTypeRegistryFromBufImage(bytes)
 	if err != nil {
 		return false, err
 	}
