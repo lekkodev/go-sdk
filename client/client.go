@@ -74,7 +74,8 @@ func NewClientFromEnv(ctx context.Context, repoOwner, repoName string, opts ...P
 		for i, opt := range opts {
 			serializedOpts[i] = fmt.Sprintf("%v", opt)
 		}
-		serializedOpts[len(opts)] = debug.Mask(apiKey, 12)
+		// Mask and trim for brevity
+		serializedOpts[len(opts)] = debug.Mask(apiKey, 12)[:min(len(apiKey), 24)]
 		opts = append(opts, WithAPIKey(apiKey))
 		var err error
 		provider, err = CachedAPIProvider(ctx, &RepositoryKey{

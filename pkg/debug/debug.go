@@ -18,8 +18,13 @@ import (
 	"encoding/json"
 	"log/slog"
 	"os"
+	"slices"
 	"strings"
+
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
+
+var primitiveTypeNames = []string{"google.protobuf.BoolValue", "google.protobuf.StringValue", "google.protobuf.Int64Value", "google.protobuf.DoubleValue"}
 
 func LogDebug(msg string, args ...any) {
 	if isDebugMode {
@@ -45,17 +50,41 @@ func Mask(s string, showLen int) string {
 	return s[:i] + strings.Repeat("*", len(s)-showLen)
 }
 
+// Attempt to serialize some known types for better readability
 func serializeArgs(args ...any) []any {
 	serialized := make([]any, len(args))
 	for i, arg := range args {
-		if m, ok := arg.(map[string]interface{}); ok {
-			if jb, err := json.Marshal(m); err == nil {
-				serialized[i] = string(jb)
-			} else {
-				serialized[i] = arg
+		switch typedArg := arg.(type) {
+		case map[string]interface{}:
+			{
+				if jb, err := json.Marshal(typedArg); err == nil {
+					serialized[i] = string(jb)
+				} else {
+					serialized[i] = typedArg
+				}
 			}
-		} else {
-			serialized[i] = arg
+		case protoreflect.ProtoMessage:
+			{
+				// Extract primitive value if possible
+				matched := false
+				if slices.Contains(primitiveTypeNames, string(typedArg.ProtoReflect().Descriptor().FullName())) {
+					typedArg.ProtoReflect().Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+						if fd.Name() == "value" {
+							serialized[i] = v.Interface()
+							matched = true
+							return false
+						}
+						return true
+					})
+				}
+				if !matched {
+					serialized[i] = typedArg
+				}
+			}
+		default:
+			{
+				serialized[i] = typedArg
+			}
 		}
 	}
 	return serialized

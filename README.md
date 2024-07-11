@@ -6,7 +6,7 @@ This SDK is intended to be used with Lekko’s code transformation tools. Make s
 
 ## Prerequisites
 
-- Go version 1.19 or greater
+- Go version 1.21 or greater
 - After running the Lekko Getting Started guide, you should have:
   - The Lekko CLI installed
   - A `.lekko` file at the project root, pointing to a lekko directory in the project (e.g. `internal/lekko`) and a lekko repository
