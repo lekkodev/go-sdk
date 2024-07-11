@@ -168,6 +168,7 @@ func (b *backendStore) EvaluateAny(key string, namespace string, lc map[string]i
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal any message: %v", err)
 	}
+	debug.LogDebug("Lekko evaluation", "name", fmt.Sprintf("%s/%s", namespace, key), "context", lc, "result", message)
 	b.eb.track(&backendv1beta1.FlagEvaluationEvent{
 		RepoKey:       b.repoKey,
 		CommitSha:     cfg.CommitSHA,
