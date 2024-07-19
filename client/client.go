@@ -78,13 +78,13 @@ func NewClientFromEnv(ctx context.Context, repoOwner, repoName string, opts ...P
 		serializedOpts[len(opts)] = debug.Mask(apiKey, 12)[:min(len(apiKey), 24)]
 		opts = append(opts, WithAPIKey(apiKey))
 		var err error
-		provider, err = CachedAPIProvider(ctx, &RepositoryKey{
+		rk := &RepositoryKey{
 			OwnerName: repoOwner,
 			RepoName:  repoName,
-		}, opts...)
+		}
+		provider, err = RetryProvider(CachedAPIProvider, ctx, rk, opts...)
 		if err != nil {
 			debug.LogError("Error connecting to Lekko, in-code fallback will be used", "opts", serializedOpts, "err", err)
-			provider = &noOpProvider{}
 		} else {
 			debug.LogInfo("Connected to Lekko", "repository", fmt.Sprintf("%s/%s", repoOwner, repoName), "opts", serializedOpts)
 		}

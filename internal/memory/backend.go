@@ -17,7 +17,6 @@ package memory
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -269,7 +268,7 @@ func (b *backendStore) loop(ctx context.Context) {
 			case <-tick.C:
 				should, err := b.shouldUpdateStore(ctx)
 				if err != nil {
-					log.Printf("failed to compare repo version: %v", err)
+					debug.LogError("Failed to check for Lekko updates", "err", err)
 					continue
 				}
 				if !should {
@@ -277,7 +276,7 @@ func (b *backendStore) loop(ctx context.Context) {
 				}
 				_, err = b.updateStoreWithBackoff(ctx)
 				if err != nil {
-					log.Printf("failed to update store: %v", err)
+					debug.LogError("Failed to fetch updates from Lekko", "err", err)
 					continue
 				}
 			}

@@ -16,10 +16,10 @@ package client
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"time"
 
+	"github.com/lekkodev/go-sdk/pkg/debug"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
@@ -38,14 +38,18 @@ func makeProvider(
 	p, err := f(ctx, rk, opts...)
 	if err != nil {
 		if delay <= 60*time.Second {
-			delay = time.Duration(float64(delay) * 1.5)
+			delay = time.Duration(min(float64(delay)*1.5, float64(60*time.Second)))
 		}
+		debug.LogInfo("Attempting to connect to Lekko", "delay", delay.Seconds())
 		rp.lastError = err
-		go makeProvider(rp, delay, f, ctx, rk, opts...)
 		time.Sleep(delay)
+		go makeProvider(rp, delay, f, ctx, rk, opts...)
 	} else {
 		rp.Lock()
 		rp.inner = p
+		if rp.lastError != nil {
+			debug.LogInfo("Successfully reconnected to Lekko")
+		}
 		rp.Unlock()
 	}
 }
@@ -78,7 +82,7 @@ func (p *retryProvider) Close(ctx context.Context) error {
 	p.RLock()
 	if p.inner == nil {
 		p.RUnlock()
-		return errors.New("Uninitialized")
+		return ErrNoOpProvider
 	}
 	p.RUnlock()
 	return p.inner.Close(ctx)
@@ -88,7 +92,7 @@ func (p *retryProvider) GetBool(ctx context.Context, key string, namespace strin
 	p.RLock()
 	if p.inner == nil {
 		p.RUnlock()
-		return false, errors.New("Uninitialized")
+		return false, ErrNoOpProvider
 	}
 	p.RUnlock()
 	return p.inner.GetBool(ctx, key, namespace)
@@ -98,7 +102,7 @@ func (p *retryProvider) GetFloat(ctx context.Context, key string, namespace stri
 	p.RLock()
 	if p.inner == nil {
 		p.RUnlock()
-		return 0, errors.New("Uninitialized")
+		return 0, ErrNoOpProvider
 	}
 	p.RUnlock()
 	return p.inner.GetFloat(ctx, key, namespace)
@@ -108,7 +112,7 @@ func (p *retryProvider) GetInt(ctx context.Context, key string, namespace string
 	p.RLock()
 	if p.inner == nil {
 		p.RUnlock()
-		return 0, errors.New("Uninitialized")
+		return 0, ErrNoOpProvider
 	}
 	p.RUnlock()
 	return p.inner.GetInt(ctx, key, namespace)
@@ -118,7 +122,7 @@ func (p *retryProvider) GetJSON(ctx context.Context, key string, namespace strin
 	p.RLock()
 	if p.inner == nil {
 		p.RUnlock()
-		return errors.New("Uninitialized")
+		return ErrNoOpProvider
 	}
 	p.RUnlock()
 	return p.inner.GetJSON(ctx, key, namespace, result)
@@ -128,7 +132,7 @@ func (p *retryProvider) GetProto(ctx context.Context, key string, namespace stri
 	p.RLock()
 	if p.inner == nil {
 		p.RUnlock()
-		return errors.New("Uninitialized")
+		return ErrNoOpProvider
 	}
 	p.RUnlock()
 	return p.inner.GetProto(ctx, key, namespace, result)
@@ -138,12 +142,18 @@ func (p *retryProvider) GetString(ctx context.Context, key string, namespace str
 	p.RLock()
 	if p.inner == nil {
 		p.RUnlock()
-		return "", errors.New("Uninitialized")
+		return "", ErrNoOpProvider
 	}
 	p.RUnlock()
 	return p.inner.GetString(ctx, key, namespace)
 }
 
 func (p *retryProvider) GetAny(ctx context.Context, key string, namespace string) (protoreflect.ProtoMessage, error) {
-	return nil, nil
+	p.RLock()
+	if p.inner == nil {
+		p.RUnlock()
+		return nil, ErrNoOpProvider
+	}
+	p.RUnlock()
+	return p.inner.GetAny(ctx, key, namespace)
 }
