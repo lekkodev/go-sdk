@@ -16,7 +16,6 @@ package memory
 
 import (
 	"context"
-	"log"
 	"sync"
 	"time"
 
@@ -24,6 +23,7 @@ import (
 	backendv1beta1 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/backend/v1beta1"
 	"github.com/bufbuild/connect-go"
 	"github.com/cenkalti/backoff/v4"
+	"github.com/lekkodev/go-sdk/pkg/debug"
 )
 
 const (
@@ -126,7 +126,7 @@ func (e *eventBatcher) sendBatchWithBackoff(ctx context.Context, batch []*backen
 	b := backoff.NewExponentialBackOff()
 	b.MaxElapsedTime = 3 * time.Second
 	if err := backoff.Retry(op, b); err != nil {
-		log.Printf("error sending metrics batch: %v", err)
+		debug.LogError("Failed to send Lekko evaluation events", "err", err)
 	}
 }
 

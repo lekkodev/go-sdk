@@ -38,15 +38,18 @@ func makeProvider(
 	p, err := f(ctx, rk, opts...)
 	if err != nil {
 		if delay <= 60*time.Second {
-			delay = time.Duration(float64(delay) * 1.5)
+			delay = time.Duration(min(float64(delay)*1.5, float64(60*time.Second)))
 		}
 		debug.LogInfo("Attempting to connect to Lekko", "delay", delay.Seconds())
 		rp.lastError = err
-		go makeProvider(rp, delay, f, ctx, rk, opts...)
 		time.Sleep(delay)
+		go makeProvider(rp, delay, f, ctx, rk, opts...)
 	} else {
 		rp.Lock()
 		rp.inner = p
+		if rp.lastError != nil {
+			debug.LogInfo("Successfully reconnected to Lekko")
+		}
 		rp.Unlock()
 	}
 }
