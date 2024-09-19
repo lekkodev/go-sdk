@@ -127,7 +127,7 @@ type store struct {
 	registry            *SerializableTypes
 }
 
-type storedConfig struct {
+type StoredConfig struct {
 	Config               *featurev1beta1.Feature
 	CommitSHA, ConfigSHA string
 }
@@ -250,7 +250,7 @@ func (s *store) update(contents *backendv1beta1.GetRepositoryContentsResponse) (
 	return true, nil
 }
 
-func (s *store) get(namespace, key string) (*storedConfig, error) {
+func (s *store) get(namespace, key string) (*StoredConfig, error) {
 	var data configData
 	var ok bool
 	var commitSHA string
@@ -264,7 +264,7 @@ func (s *store) get(namespace, key string) (*storedConfig, error) {
 	if !ok {
 		return nil, ErrConfigNotFound
 	}
-	return &storedConfig{
+	return &StoredConfig{
 		Config:    data.config,
 		CommitSHA: commitSHA,
 		ConfigSHA: data.configSHA,
@@ -292,7 +292,7 @@ func (s *store) getCommitSha() string {
 	return ret
 }
 
-func (s *store) evaluate(key string, namespace string, lc map[string]interface{}) (*anypb.Any, *storedConfig, eval.ResultPath, error) {
+func (s *store) evaluate(key string, namespace string, lc map[string]interface{}) (*anypb.Any, *StoredConfig, eval.ResultPath, error) {
 	var typeURL string
 	var targetFieldNumber uint64
 	targetFieldNumber = 0
@@ -371,7 +371,7 @@ func (s *store) evaluate(key string, namespace string, lc map[string]interface{}
 }
 
 func (s *store) evaluateType(
-	key string, namespace string, lc map[string]interface{}, dest proto.Message) (*storedConfig, eval.ResultPath, error) {
+	key string, namespace string, lc map[string]interface{}, dest proto.Message) (*StoredConfig, eval.ResultPath, error) {
 	a, cfg, rp, err := s.evaluate(key, namespace, lc)
 	if err != nil {
 		return nil, nil, err
@@ -383,7 +383,7 @@ func (s *store) evaluateType(
 }
 
 func (s *store) maybeEvaluateReferencedConfigs(
-	cfg *storedConfig, key string, namespace string, lc map[string]interface{}) (map[string]*structpb.Value, error) {
+	cfg *StoredConfig, key string, namespace string, lc map[string]interface{}) (map[string]*structpb.Value, error) {
 	referencedConfigToValueMap := make(map[string]*structpb.Value)
 	referencedConfigKeys := s.getReferencedConfigKeys(cfg)
 	if len(referencedConfigKeys) > 0 {
@@ -405,7 +405,7 @@ func (s *store) maybeEvaluateReferencedConfigs(
 	return referencedConfigToValueMap, nil
 }
 
-func (s *store) getReferencedConfigKeys(cfg *storedConfig) map[string]bool {
+func (s *store) getReferencedConfigKeys(cfg *StoredConfig) map[string]bool {
 	referencedConfigKeys := make(map[string]bool)
 	for _, constraint := range cfg.Config.GetTree().GetConstraints() {
 		evaluateTo := constraint.GetRuleAstNew().GetCallExpression().GetEvaluateTo()

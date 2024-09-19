@@ -191,10 +191,10 @@ func (g *gitStore) watch(ctx context.Context, fsChan <-chan notify.EventInfo) {
 	}
 }
 
-func (g *gitStore) Evaluate(key string, namespace string, lekkoContext map[string]interface{}, dest proto.Message) error {
+func (g *gitStore) Evaluate(key string, namespace string, lekkoContext map[string]interface{}, dest proto.Message) (*StoredConfig, error) {
 	cfg, rp, err := g.store.evaluateType(key, namespace, lekkoContext, dest)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if g.eb != nil {
 		g.eb.track(&backendv1beta1.FlagEvaluationEvent{
@@ -207,11 +207,12 @@ func (g *gitStore) Evaluate(key string, namespace string, lekkoContext map[strin
 			ResultPath:    toResultPathProto(rp),
 		})
 	}
-	return nil
+	return cfg, nil
 }
 
-func (g *gitStore) EvaluateAny(key string, namespace string, lc map[string]interface{}) (protoreflect.ProtoMessage, error) {
-	return nil, nil
+func (g *gitStore) EvaluateAny(key string, namespace string, lc map[string]interface{}) (protoreflect.ProtoMessage, *StoredConfig, error) {
+	// TODO: implement
+	return nil, nil, nil
 }
 
 func (g *gitStore) Close(ctx context.Context) error {

@@ -17,6 +17,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"time"
 
 	"github.com/lekkodev/go-sdk/internal/memory"
@@ -60,9 +61,13 @@ func CachedAPIProvider(
 	if err != nil {
 		return nil, err
 	}
-	return &cachedProvider{
+	provider := &cachedProvider{
 		store: backend,
-	}, nil
+	}
+	if cfg.otelTracing {
+		provider.otel = &otelTracing{}
+	}
+	return provider, nil
 }
 
 // Reads configuration from a git repository on-disk. This provider will remain up to date with
@@ -97,13 +102,18 @@ func CachedGitFsProvider(
 	if err != nil {
 		return nil, err
 	}
-	return &cachedProvider{
+	provider := &cachedProvider{
 		store: gitStore,
-	}, nil
+	}
+	if cfg.otelTracing {
+		provider.otel = &otelTracing{}
+	}
+	return provider, nil
 }
 
 type cachedProvider struct {
 	store memory.Store
+	otel  *otelTracing
 }
 
 func (cp *cachedProvider) Close(ctx context.Context) error {
@@ -111,36 +121,46 @@ func (cp *cachedProvider) Close(ctx context.Context) error {
 }
 
 func (cp *cachedProvider) GetAny(ctx context.Context, key string, namespace string) (protoreflect.ProtoMessage, error) {
-	return cp.store.EvaluateAny(key, namespace, fromContext(ctx))
+	msg, cfg, err := cp.store.EvaluateAny(key, namespace, fromContext(ctx))
+	// TODO: log values for primitive types
+	cp.otel.addTracingEvent(ctx, key, "", cfg.CommitSHA)
+	return msg, err
 }
 
 func (cp *cachedProvider) GetBool(ctx context.Context, key string, namespace string) (bool, error) {
 	dest := &wrapperspb.BoolValue{}
-	if err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest); err != nil {
+	cfg, err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest)
+	if err != nil {
 		return false, err
 	}
+	cp.otel.addTracingEvent(ctx, key, strconv.FormatBool(dest.GetValue()), cfg.CommitSHA)
 	return dest.GetValue(), nil
 }
 
 func (cp *cachedProvider) GetFloat(ctx context.Context, key string, namespace string) (float64, error) {
 	dest := &wrapperspb.DoubleValue{}
-	if err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest); err != nil {
+	cfg, err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest)
+	if err != nil {
 		return 0, err
 	}
+	cp.otel.addTracingEvent(ctx, key, strconv.FormatFloat(dest.GetValue(), 'G', -1, 64), cfg.CommitSHA)
 	return dest.GetValue(), nil
 }
 
 func (cp *cachedProvider) GetInt(ctx context.Context, key string, namespace string) (int64, error) {
 	dest := &wrapperspb.Int64Value{}
-	if err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest); err != nil {
+	cfg, err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest)
+	if err != nil {
 		return 0, err
 	}
+	cp.otel.addTracingEvent(ctx, key, strconv.FormatInt(dest.GetValue(), 10), cfg.CommitSHA)
 	return dest.GetValue(), nil
 }
 
 func (cp *cachedProvider) GetJSON(ctx context.Context, key string, namespace string, result interface{}) error {
 	dest := &structpb.Value{}
-	if err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest); err != nil {
+	cfg, err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest)
+	if err != nil {
 		return err
 	}
 	bytes, err := dest.MarshalJSON()
@@ -150,17 +170,27 @@ func (cp *cachedProvider) GetJSON(ctx context.Context, key string, namespace str
 	if err := json.Unmarshal(bytes, result); err != nil {
 		return errors.Wrapf(err, "failed to unmarshal json into go type %T", result)
 	}
+	// json values are not logged
+	cp.otel.addTracingEvent(ctx, key, "", cfg.CommitSHA)
 	return nil
 }
 
 func (cp *cachedProvider) GetProto(ctx context.Context, key string, namespace string, result protoreflect.ProtoMessage) error {
-	return cp.store.Evaluate(key, namespace, fromContext(ctx), result)
+	cfg, err := cp.store.Evaluate(key, namespace, fromContext(ctx), result)
+	if err != nil {
+		return err
+	}
+	// proto values are not logged
+	cp.otel.addTracingEvent(ctx, key, "", cfg.CommitSHA)
+	return nil
 }
 
 func (cp *cachedProvider) GetString(ctx context.Context, key string, namespace string) (string, error) {
 	dest := &wrapperspb.StringValue{}
-	if err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest); err != nil {
+	cfg, err := cp.store.Evaluate(key, namespace, fromContext(ctx), dest)
+	if err != nil {
 		return "", err
 	}
+	cp.otel.addTracingEvent(ctx, key, dest.GetValue(), cfg.CommitSHA)
 	return dest.GetValue(), nil
 }

@@ -40,8 +40,8 @@ const (
 )
 
 type Store interface {
-	Evaluate(key string, namespace string, lekkoContext map[string]interface{}, dest proto.Message) error
-	EvaluateAny(key string, namespace string, lekkoContext map[string]interface{}) (protoreflect.ProtoMessage, error)
+	Evaluate(key string, namespace string, lekkoContext map[string]interface{}, dest proto.Message) (*StoredConfig, error)
+	EvaluateAny(key string, namespace string, lekkoContext map[string]interface{}) (protoreflect.ProtoMessage, *StoredConfig, error)
 	Close(ctx context.Context) error
 }
 
@@ -134,10 +134,10 @@ func (b *backendStore) Close(ctx context.Context) error {
 }
 
 // Evaluate implements Store.
-func (b *backendStore) Evaluate(key string, namespace string, lc map[string]interface{}, dest protoreflect.ProtoMessage) error {
+func (b *backendStore) Evaluate(key string, namespace string, lc map[string]interface{}, dest protoreflect.ProtoMessage) (*StoredConfig, error) {
 	cfg, rp, err := b.store.evaluateType(key, namespace, lc, dest)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	debug.LogDebug("Lekko evaluation", "name", fmt.Sprintf("%s/%s", namespace, key), "context", lc, "result", dest)
 	// track metrics
@@ -150,22 +150,22 @@ func (b *backendStore) Evaluate(key string, namespace string, lc map[string]inte
 		ContextKeys:   toContextKeysProto(lc),
 		ResultPath:    toResultPathProto(rp),
 	})
-	return nil
+	return cfg, nil
 }
 
-func (b *backendStore) EvaluateAny(key string, namespace string, lc map[string]interface{}) (protoreflect.ProtoMessage, error) {
+func (b *backendStore) EvaluateAny(key string, namespace string, lc map[string]interface{}) (protoreflect.ProtoMessage, *StoredConfig, error) {
 	anyMsg, cfg, rp, err := b.store.evaluate(key, namespace, lc)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	messageType, err := b.store.registry.Types.FindMessageByURL(anyMsg.TypeUrl)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find message type: %v", err)
+		return nil, nil, fmt.Errorf("failed to find message type: %v", err)
 	}
 	message := messageType.New().Interface()
 	err = proto.Unmarshal(anyMsg.Value, message)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal any message: %v", err)
+		return nil, nil, fmt.Errorf("failed to unmarshal any message: %v", err)
 	}
 	debug.LogDebug("Lekko evaluation", "name", fmt.Sprintf("%s/%s", namespace, key), "context", lc, "result", message)
 	b.eb.track(&backendv1beta1.FlagEvaluationEvent{
@@ -177,7 +177,7 @@ func (b *backendStore) EvaluateAny(key string, namespace string, lc map[string]i
 		ContextKeys:   toContextKeysProto(lc),
 		ResultPath:    toResultPathProto(rp),
 	})
-	return message, nil
+	return message, cfg, nil
 }
 
 func (b *backendStore) registerWithBackoff(ctx context.Context) (string, error) {
