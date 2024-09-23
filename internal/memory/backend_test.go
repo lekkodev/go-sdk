@@ -115,31 +115,45 @@ func TestBackendStore(t *testing.T) {
 	assert.Equal(t, testVersion, tds.registrationVersion)
 
 	bv := &wrapperspb.BoolValue{}
-	require.NoError(t, b.Evaluate("bool", "ns-1", nil, bv))
+	meta, err := b.Evaluate("bool", "ns-1", nil, bv)
+	require.NoError(t, err)
+	assert.Equal(t, meta.CommitSHA, "commitsha")
 	assert.Equal(t, true, bv.Value)
 	sv := &wrapperspb.StringValue{}
-	require.NoError(t, b.Evaluate("string", "ns-1", nil, sv))
+	meta, err = b.Evaluate("string", "ns-1", nil, sv)
+	require.NoError(t, err)
+	assert.Equal(t, meta.CommitSHA, "commitsha")
 	assert.Equal(t, "foo", sv.Value)
-	require.NoError(t, b.Evaluate("want-foo", "ns-1", nil, sv))
+	assert.Equal(t, meta.CommitSHA, "commitsha")
+	meta, err = b.Evaluate("want-foo", "ns-1", nil, sv)
+	require.NoError(t, err)
 	assert.Equal(t, "foo", sv.Value)
+	assert.Equal(t, meta.CommitSHA, "commitsha")
 	iv := &wrapperspb.Int64Value{}
-	require.NoError(t, b.Evaluate("int", "ns-1", nil, iv))
+	meta, err = b.Evaluate("int", "ns-1", nil, iv)
+	require.NoError(t, err)
 	assert.Equal(t, int64(42), iv.Value)
+	assert.Equal(t, meta.CommitSHA, "commitsha")
 	fv := &wrapperspb.DoubleValue{}
-	require.NoError(t, b.Evaluate("float", "ns-1", nil, fv))
+	meta, err = b.Evaluate("float", "ns-1", nil, fv)
+	require.NoError(t, err)
 	assert.Equal(t, float64(1.2), fv.Value)
+	assert.Equal(t, meta.CommitSHA, "commitsha")
 	vv := &structpb.Value{}
-	require.NoError(t, b.Evaluate("json", "ns-1", nil, vv))
+	meta, err = b.Evaluate("json", "ns-1", nil, vv)
+	require.NoError(t, err)
 	expectedValue, err := structpb.NewValue([]any{1, 2.5, "bar"})
 	require.NoError(t, err)
 	assert.True(t, proto.Equal(expectedValue, vv))
+	assert.Equal(t, meta.CommitSHA, "commitsha")
 	pv := &wrapperspb.Int32Value{}
-	require.NoError(t, b.Evaluate("proto", "ns-1", nil, pv))
+	meta, err = b.Evaluate("proto", "ns-1", nil, pv)
+	require.NoError(t, err)
 	assert.Equal(t, int32(58), pv.Value)
+	assert.Equal(t, meta.CommitSHA, "commitsha")
 	// Google WKT are not actually proto messages, so proto isn't really useful for testing this
 	//require.NoError(t, b.Evaluate("want-proto", "ns-1", nil, pv))
 	//assert.Equal(t, int32(58), pv.Value)
-
 	err = b.Close(ctx)
 	require.NoError(t, err, "no error during close")
 	events := tds.getEventsReceived()

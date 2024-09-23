@@ -24,6 +24,7 @@ import (
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-billy/v5/osfs"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/storage"
 	gitmemory "github.com/go-git/go-git/v5/storage/memory"
@@ -34,26 +35,30 @@ import (
 
 func TestGitStore(t *testing.T) {
 	ctx := context.Background()
-	storer, fs := setupFS(t)
+	commitHash, storer, fs := setupFS(t)
 
 	gs, err := newGitStore(ctx, "", "lekkodev", "testrepo", storer, fs, nil, 10, false, 0, testVersion)
 	require.NoError(t, err)
 	assert.NotNil(t, gs)
 
 	bv := wrapperspb.BoolValue{}
-	require.NoError(t, gs.Evaluate("example", "default", nil, &bv))
+	meta, err := gs.Evaluate("example", "default", nil, &bv)
+	require.NoError(t, err)
 	assert.True(t, bv.Value)
+	assert.Equal(t, meta.CommitSHA, commitHash.String())
 
 	sv := wrapperspb.StringValue{}
-	require.NoError(t, gs.Evaluate("tiers", "test-namespace", nil, &sv))
+	meta, err = gs.Evaluate("tiers", "test-namespace", nil, &sv)
+	require.NoError(t, err)
 	assert.Equal(t, sv.Value, "foo")
+	assert.Equal(t, meta.CommitSHA, commitHash.String())
 
-	require.Error(t, gs.Evaluate("not-a-key", "not-a-ns", nil, &bv))
-
+	_, err = gs.Evaluate("not-a-key", "not-a-ns", nil, &bv)
+	require.Error(t, err)
 	require.NoError(t, gs.Close(ctx))
 }
 
-func setupFS(t *testing.T) (storage.Storer, billy.Filesystem) {
+func setupFS(t *testing.T) (plumbing.Hash, storage.Storer, billy.Filesystem) {
 	storer := gitmemory.NewStorage()
 	fs := memfs.New()
 	repo, err := git.Init(storer, fs)
@@ -65,7 +70,7 @@ func setupFS(t *testing.T) (storage.Storer, billy.Filesystem) {
 	wt, err := repo.Worktree()
 	require.NoError(t, err)
 	require.NoError(t, wt.AddGlob("."))
-	_, err = wt.Commit("initial commit", &git.CommitOptions{
+	commitHash, err := wt.Commit("initial commit", &git.CommitOptions{
 		Author: &object.Signature{
 			Name:  "test",
 			Email: "ci@lekko.com",
@@ -74,7 +79,7 @@ func setupFS(t *testing.T) (storage.Storer, billy.Filesystem) {
 	})
 	require.NoError(t, err)
 
-	return storer, fs
+	return commitHash, storer, fs
 }
 
 func copyDir(src, dst billy.Filesystem) error {

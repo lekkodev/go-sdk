@@ -46,34 +46,34 @@ type staticStore struct {
 	features map[string]map[string]*featurev1beta1.Feature
 }
 
-func (s *staticStore) EvaluateAny(key string, namespace string, lc map[string]interface{}) (protoreflect.ProtoMessage, error) {
-	return nil, nil
+func (s *staticStore) EvaluateAny(key string, namespace string, lc map[string]interface{}) (protoreflect.ProtoMessage, *StoredConfig, error) {
+	return nil, nil, nil
 }
 
-func (s *staticStore) Evaluate(key string, namespace string, lekkoContext map[string]interface{}, dest proto.Message) error {
+func (s *staticStore) Evaluate(key string, namespace string, lekkoContext map[string]interface{}, dest proto.Message) (*StoredConfig, error) {
 	var typeURL string
 	var targetFieldNumber uint64
 	targetFieldNumber = 0
 	for { // TODO - stop loops (especially for server side eval..
 		ns, ok := s.features[namespace]
 		if !ok {
-			return errors.New("unknown namespace")
+			return nil, errors.New("unknown namespace")
 		}
 		cfg, ok := ns[key]
 		if !ok {
-			return errors.New("unknown key")
+			return nil, errors.New("unknown key")
 		}
 		evaluableConfig := eval.NewV1Beta3(cfg, namespace, nil)
 		a, _, err := evaluableConfig.Evaluate(lekkoContext)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if a.TypeUrl == "type.googleapis.com/lekko.protobuf.ConfigCall" {
 			b := a.Value
 			for len(b) > 0 {
 				fid, wireType, n := protowire.ConsumeTag(b)
 				if n < 0 {
-					return protowire.ParseError(n)
+					return nil, protowire.ParseError(n)
 				}
 				b = b[n:]
 				switch fid {
@@ -89,7 +89,7 @@ func (s *staticStore) Evaluate(key string, namespace string, lekkoContext map[st
 					n = protowire.ConsumeFieldValue(fid, wireType, b)
 				}
 				if n < 0 {
-					return protowire.ParseError(n)
+					return nil, protowire.ParseError(n)
 				}
 				b = b[n:]
 			}
@@ -99,12 +99,12 @@ func (s *staticStore) Evaluate(key string, namespace string, lekkoContext map[st
 				for len(b) > 0 {
 					fid, wireType, n := protowire.ConsumeTag(b)
 					if n < 0 {
-						return protowire.ParseError(n)
+						return nil, protowire.ParseError(n)
 					}
 					b = b[n:]
 					n = protowire.ConsumeFieldValue(fid, wireType, b)
 					if n < 0 {
-						return protowire.ParseError(n)
+						return nil, protowire.ParseError(n)
 					}
 					if targetFieldNumber == uint64(fid) {
 						var value []byte
@@ -114,13 +114,26 @@ func (s *staticStore) Evaluate(key string, namespace string, lekkoContext map[st
 							TypeUrl: typeURL,
 							Value:   value,
 						}
-						return a.UnmarshalTo(dest) // TODO default values and do we want to support deeper nesting?
+						// TODO default values and do we want to support deeper nesting?
+						err = a.UnmarshalTo(dest)
+						if err != nil {
+							return nil, err
+						}
+						return &StoredConfig{
+							Config: cfg,
+						}, nil
 					} else {
 						b = b[n:]
 					}
 				}
 			}
-			return a.UnmarshalTo(dest)
+			err = a.UnmarshalTo(dest)
+			if err != nil {
+				return nil, err
+			}
+			return &StoredConfig{
+				Config: cfg,
+			}, nil
 		}
 	}
 }

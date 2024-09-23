@@ -57,6 +57,9 @@ func ConnectAPIProvider(ctx context.Context, apiKey string, rk *RepositoryKey, o
 		lekkoClient: clientv1beta1connect.NewConfigurationServiceClient(cfg.getHTTPClient(), cfg.url),
 		rk:          cfg.repoKey,
 	}
+	if cfg.otelTracing {
+		provider.otel = &otelTracing{}
+	}
 	if err := provider.register(ctx); err != nil {
 		return nil, err
 	}
@@ -121,6 +124,7 @@ type apiProvider struct {
 	apikey      string
 	lekkoClient clientv1beta1connect.ConfigurationServiceClient
 	rk          *RepositoryKey
+	otel        *otelTracing
 }
 
 // This performs an exponential backoff until the context is cancelled.

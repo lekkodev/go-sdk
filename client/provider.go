@@ -24,6 +24,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/net/http2"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -133,6 +135,7 @@ type providerConfig struct {
 	updateInterval time.Duration
 	serverPort     int32
 	allowHTTP      bool
+	otelTracing    bool
 }
 
 func (cfg *providerConfig) validate() error {
@@ -204,4 +207,45 @@ func (o *repositoryKeyOption) apply(cfg *providerConfig) {
 
 func (o *repositoryKeyOption) String() string {
 	return fmt.Sprintf("%+v", *o)
+}
+
+type otelTracingOption struct{}
+
+func WithOtelTracing() ProviderOption {
+	return &otelTracingOption{}
+}
+
+func (o *otelTracingOption) apply(cfg *providerConfig) {
+	cfg.otelTracing = true
+}
+
+func (o *otelTracingOption) String() string {
+	return "otelTracing"
+}
+
+type otelTracing struct{}
+
+func (o *otelTracing) addTracingEvent(ctx context.Context, key, stringValue, version string) {
+	if o == nil {
+		return
+	}
+
+	span := trace.SpanFromContext(ctx)
+
+	var attributes []attribute.KeyValue
+	if len(stringValue) > 0 {
+		attributes = append(attributes, attribute.String(fmt.Sprintf("lekko.%s.string_value", key), stringValue))
+	}
+
+	span.SetAttributes(attributes...)
+
+	// TODO: add repo and namespace
+	if len(version) > 0 {
+		attributes = append(attributes, attribute.String(fmt.Sprintf("lekko.%s.version", key), version))
+	}
+	attributes = append(attributes, attribute.String("lekko.key", key))
+	span.AddEvent(
+		fmt.Sprintf("lekko.%s", key),
+		trace.WithAttributes(attributes...),
+	)
 }
