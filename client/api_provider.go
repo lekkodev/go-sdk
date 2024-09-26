@@ -19,10 +19,10 @@ import (
 	"encoding/json"
 	"time"
 
-	clientv1beta1connect "buf.build/gen/go/lekkodev/sdk/bufbuild/connect-go/lekko/client/v1beta1/clientv1beta1connect"
+	clientv1beta1connect "buf.build/gen/go/lekkodev/sdk/connectrpc/go/lekko/client/v1beta1/clientv1beta1connect"
 	clientv1beta1 "buf.build/gen/go/lekkodev/sdk/protocolbuffers/go/lekko/client/v1beta1"
+	"connectrpc.com/connect"
 
-	"github.com/bufbuild/connect-go"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"

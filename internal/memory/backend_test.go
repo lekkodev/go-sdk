@@ -22,7 +22,7 @@ import (
 
 	backendv1beta1 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/backend/v1beta1"
 	featurev1beta1 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/feature/v1beta1"
-	connect "github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/lekkodev/go-sdk/testdata"
 	"github.com/pkg/errors"

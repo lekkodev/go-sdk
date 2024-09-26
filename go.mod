@@ -4,8 +4,6 @@ go 1.22
 
 toolchain go1.22.4
 
-require github.com/bufbuild/connect-go v1.10.0
-
 require (
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
@@ -34,10 +32,11 @@ require (
 )
 
 require (
-	buf.build/gen/go/lekkodev/cli/bufbuild/connect-go v1.10.0-20240528213244-5fdc18b47eea.1
-	buf.build/gen/go/lekkodev/cli/protocolbuffers/go v1.34.2-20240528213244-5fdc18b47eea.2
-	buf.build/gen/go/lekkodev/sdk/bufbuild/connect-go v1.10.0-20230810202034-1c821065b9a0.1
+	buf.build/gen/go/lekkodev/cli/connectrpc/go v1.17.0-20240926040046-3e1042256cdf.1
+	buf.build/gen/go/lekkodev/cli/protocolbuffers/go v1.34.2-20240926040046-3e1042256cdf.2
+	buf.build/gen/go/lekkodev/sdk/connectrpc/go v1.17.0-20230810202034-1c821065b9a0.1
 	buf.build/gen/go/lekkodev/sdk/protocolbuffers/go v1.34.2-20230810202034-1c821065b9a0.2
+	connectrpc.com/connect v1.17.0
 	github.com/OneOfOne/xxhash v1.2.8
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/go-git/go-billy/v5 v5.5.0
