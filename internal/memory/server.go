@@ -22,9 +22,9 @@ import (
 	"sync"
 	"time"
 
-	"buf.build/gen/go/lekkodev/sdk/bufbuild/connect-go/lekko/server/v1beta1/serverv1beta1connect"
+	"buf.build/gen/go/lekkodev/sdk/connectrpc/go/lekko/server/v1beta1/serverv1beta1connect"
 	serverv1beta1 "buf.build/gen/go/lekkodev/sdk/protocolbuffers/go/lekko/server/v1beta1"
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 )

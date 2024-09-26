@@ -20,7 +20,8 @@ import (
 	"testing"
 
 	v1beta1 "buf.build/gen/go/lekkodev/sdk/protocolbuffers/go/lekko/client/v1beta1"
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
+
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

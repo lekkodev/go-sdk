@@ -22,9 +22,9 @@ import (
 	"sync"
 	"time"
 
-	"buf.build/gen/go/lekkodev/cli/bufbuild/connect-go/lekko/backend/v1beta1/backendv1beta1connect"
+	"buf.build/gen/go/lekkodev/cli/connectrpc/go/lekko/backend/v1beta1/backendv1beta1connect"
 	backendv1beta1 "buf.build/gen/go/lekkodev/cli/protocolbuffers/go/lekko/backend/v1beta1"
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/osfs"
